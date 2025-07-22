@@ -75,47 +75,45 @@ sovi_data$Education_Level <- cut(sovi_data$LOWEDU,
                                  breaks = quantile(sovi_data$LOWEDU, probs = c(0, 0.33, 0.67, 1), na.rm = TRUE),
                                  labels = c("Pendidikan_Tinggi", "Pendidikan_Sedang", "Pendidikan_Rendah"), include.lowest = TRUE)
 
-# Enhanced Green theme color palette with gray-blue-mint-neptune accents
-colors <- c("#2E7D32", "#4CAF50", "#E8F5E8", "#B0BEC5", "#81C784", "#26A69A", "#00695C", "#546E7A", "#37474F")
+# Navy-Denim-Neptune theme color palette
+colors <- c("#1A237E", "#3949AB", "#E8EAF6", "#90A4AE", "#5C6BC0", "#26C6DA", "#006064", "#455A64", "#263238")
 
-# Enhanced Green-themed CSS with gray-blue-mint-neptune accents
-colors_new <- c("#2E7D32", "#4CAF50", "#E8F5E8", "#B0BEC5", "#81C784", "#26A69A", "#00695C", "#546E7A", "#37474F")
-
+# Navy-Denim-Neptune themed CSS
 custom_css <- paste0("
 .content-wrapper, .right-side {
-  background: linear-gradient(135deg, #E8F5E8 0%, #F1F8E9 100%);
+  background: linear-gradient(135deg, #E8EAF6 0%, #F3E5F5 100%);
 }
 .main-header .navbar {
-  background: linear-gradient(135deg, #2E7D32 0%, #26A69A 100%) !important;
+  background: linear-gradient(135deg, #1A237E 0%, #26C6DA 100%) !important;
 }
 .main-header .logo {
-  background: linear-gradient(135deg, #2E7D32 0%, #26A69A 100%) !important;
+  background: linear-gradient(135deg, #1A237E 0%, #26C6DA 100%) !important;
 }
 .sidebar {
-  background: linear-gradient(180deg, #37474F 0%, #546E7A 100%) !important;
+  background: linear-gradient(180deg, #263238 0%, #455A64 100%) !important;
 }
 .box {
   border-radius: 12px !important;
-  box-shadow: 0 8px 20px rgba(46, 125, 50, 0.15) !important;
-  border-top: 4px solid #4CAF50 !important;
+  box-shadow: 0 8px 20px rgba(26, 35, 126, 0.15) !important;
+  border-top: 4px solid #3949AB !important;
   background: white !important;
 }
 .btn-primary {
-  background: linear-gradient(135deg, #4CAF50 0%, #26A69A 100%) !important;
+  background: linear-gradient(135deg, #3949AB 0%, #26C6DA 100%) !important;
   border: none !important;
   border-radius: 8px !important;
   transition: all 0.3s ease !important;
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, #2E7D32 0%, #00695C 100%) !important;
+  background: linear-gradient(135deg, #1A237E 0%, #006064 100%) !important;
   transform: translateY(-2px) !important;
 }
 .value-box-icon {
-  background: rgba(76, 175, 80, 0.2) !important;
+  background: rgba(57, 73, 171, 0.2) !important;
 }
 .leaflet-container {
   border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.1);
+  box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
 }
 ")
 
@@ -442,7 +440,9 @@ ui <- dashboardPage(
                      column(4,
                             div(
                               style = paste0("background: ", colors[3], "; padding: 10px; border-radius: 6px;"),
-                              h6("Skema Warna Konsisten: Green Professional", style = paste0("color: ", colors[1], "; margin: 0;"))
+                              h6("Skema Warna:", style = paste0("color: ", colors[1], "; margin: 0; font-weight: bold;")),
+                              tags$small("🟢 Kontinyu | 🟠 Populasi | 🔵 Ekonomi | 🟡 Usia | 🟤 Pendidikan", 
+                                        style = "color: #455A64; font-size: 11px;")
                             )
                      )
                    ),
@@ -601,11 +601,11 @@ ui <- dashboardPage(
                               )
                      ),
                      
-                     tabPanel("SOVI PETA",
+                     tabPanel("SOVI DATA",
                               br(),
                               div(
                                 style = paste0("background: white; border-radius: 8px; padding: 20px; border: 1px solid ", colors[2], ";"),
-                                h4("🗺️ Tabel Data SOVI Peta Interaktif", style = paste0("color: ", colors[1], ";")),
+                                h4("📊 Tabel Data SOVI Interaktif", style = paste0("color: ", colors[1], ";")),
                                 
                                 fluidRow(
                                   column(6,
@@ -785,7 +785,7 @@ ui <- dashboardPage(
                               br(),
                               fluidRow(
                                 column(4,
-                                       h5("Pengaturan Clustering", style = paste0("color: ", colors[1], ";")),
+                                       h5("🎯 Pengaturan Clustering Provinsi", style = paste0("color: ", colors[1], ";")),
                                        selectInput("cluster_variables", "Pilih Variabel untuk Clustering:",
                                                    choices = NULL, multiple = TRUE),
                                        selectInput("cluster_method", "Metode Clustering:",
@@ -804,14 +804,14 @@ ui <- dashboardPage(
                                                      choices = list("ward.D2", "single", "complete", "average"))
                                        ),
                                        br(),
-                                       actionButton("run_clustering", "Jalankan Analisis Cluster",
+                                       actionButton("run_clustering", "🚀 Jalankan Analisis Cluster",
                                                     class = "btn-primary", style = "width: 100%;")
                                 ),
                                 column(8,
                                        conditionalPanel(
                                          condition = "input.run_clustering > 0",
-                                         h5("Visualisasi Cluster", style = paste0("color: ", colors[1], ";")),
-                                         plotlyOutput("cluster_plot", height = "400px")
+                                         h5("🗺️ Peta Cluster Provinsi Interaktif", style = paste0("color: ", colors[1], ";")),
+                                         leafletOutput("cluster_plot", height = "500px")
                                        )
                                 )
                               ),
@@ -1627,7 +1627,7 @@ server <- function(input, output, session) {
       config(displayModeBar = FALSE)
   })
   
-  # Enhanced Beranda map with consistent green theme
+  # Enhanced Beranda map with category-specific color schemes
   output$beranda_map <- renderLeaflet({
     req(input$beranda_map_var, input$beranda_map_category)
     
@@ -1642,145 +1642,147 @@ server <- function(input, output, session) {
     if(input$beranda_map_category == "none") {
       # Continuous variable mapping with green theme
       pal <- colorNumeric(
-        palette = c("#E8F5E8", "#81C784", "#4CAF50", "#2E7D32", "#1B5E20"),
+        palette = c("#E8F5E8", "#A5D6A7", "#66BB6A", "#4CAF50", "#2E7D32"),
         domain = sovi_peta_valid[[map_var]]
       )
+      map_color_theme <- "#2E7D32"
       
-      leaflet(sovi_peta_valid) %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = 118, lat = -2, zoom = 5) %>%
-        addPolygons(
-          fillColor = ~pal(sovi_peta_valid[[map_var]]),
-          weight = 1,
-          opacity = 1,
-          color = "white",
-          dashArray = "3",
-          fillOpacity = 0.8,
-          highlightOptions = highlightOptions(
-            weight = 3,
-            color = "#2E7D32",
-            dashArray = "",
-            fillOpacity = 0.9,
-            bringToFront = TRUE
-          ),
-          label = ~lapply(paste(
-            "<div style='font-family: Arial; font-size: 14px; max-width: 300px;'>",
-            "<strong style='color: #2E7D32; font-size: 16px;'>🏛️ ", nmkab, "</strong><br/>",
-            "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", nmprov, "</strong><br/>",
-            "<span style='color: #546E7A;'>📊 ", map_var, ":</span> <strong style='color: #4CAF50;'>", round(sovi_peta_valid[[map_var]], 2), "</strong><br/>",
-            "<span style='color: #546E7A;'>👥 Populasi:</span> ", format(POPULATION, big.mark = ","), "<br/>",
-            "<span style='color: #546E7A;'>📈 Level:</span> <strong>", 
-            ifelse(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.75, na.rm = TRUE), "🔴 Tinggi",
-                   ifelse(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.25, na.rm = TRUE), "🟡 Sedang", "🟢 Rendah")), "</strong>",
-            "</div>"
-          ), HTML),
-          labelOptions = labelOptions(
-            style = list("font-weight" = "normal", padding = "8px 12px", "border-radius" = "8px"),
-            textsize = "14px",
-            direction = "auto"
-          )
-        ) %>%
-        addLegend(
-          pal = pal, 
-          values = sovi_peta_valid[[map_var]], 
-          opacity = 0.8, 
-          title = HTML(paste0("<strong style='color: #2E7D32;'>", map_var, "</strong>")),
-          position = "bottomright"
-        )
     } else {
-      # Categorical variable mapping with green theme
+      # Category-specific color schemes
       cat_var <- input$beranda_map_category
       category_data <- sovi_peta_valid[[cat_var]]
       unique_cats <- unique(category_data[!is.na(category_data)])
       
-      green_palette <- c("#2E7D32", "#4CAF50", "#81C784", "#A5D6A7", "#C8E6C9")
-      pal <- colorFactor(
-        palette = green_palette[1:length(unique_cats)],
-        domain = unique_cats
-      )
+      if(cat_var == "Population_Size") {
+        # Orange theme for population
+        cat_palette <- c("#FFF3E0", "#FFB74D", "#FF9800", "#F57C00", "#E65100")[1:length(unique_cats)]
+        map_color_theme <- "#FF9800"
+      } else if(cat_var == "Economic_Status") {
+        # Blue theme for economic status
+        cat_palette <- c("#E3F2FD", "#90CAF9", "#2196F3", "#1976D2", "#0D47A1")[1:length(unique_cats)]
+        map_color_theme <- "#2196F3"
+      } else if(cat_var == "Age_Group") {
+        # Yellow theme for age groups
+        cat_palette <- c("#FFFDE7", "#FFF176", "#FFEB3B", "#FBC02D", "#F57F17")[1:length(unique_cats)]
+        map_color_theme <- "#FFEB3B"
+      } else if(cat_var == "Education_Level") {
+        # Dark yellow/amber theme for education
+        cat_palette <- c("#FFF8E1", "#FFCC02", "#FFC107", "#FF8F00", "#FF6F00")[1:length(unique_cats)]
+        map_color_theme <- "#FFC107"
+      } else {
+        # Default navy theme
+        cat_palette <- colors[1:length(unique_cats)]
+        map_color_theme <- colors[1]
+      }
       
-      leaflet(sovi_peta_valid) %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = 118, lat = -2, zoom = 5) %>%
-        addPolygons(
-          fillColor = ~pal(category_data),
-          weight = 1,
-          opacity = 1,
-          color = "white",
-          dashArray = "3",
-          fillOpacity = 0.8,
-          highlightOptions = highlightOptions(
-            weight = 3,
-            color = "#2E7D32",
-            dashArray = "",
-            fillOpacity = 0.9,
-            bringToFront = TRUE
-          ),
-          label = ~lapply(paste(
-            "<div style='font-family: Arial; font-size: 14px; max-width: 300px;'>",
-            "<strong style='color: #2E7D32; font-size: 16px;'>🏛️ ", nmkab, "</strong><br/>",
-            "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", nmprov, "</strong><br/>",
-            "<span style='color: #546E7A;'>🏷️ ", cat_var, ":</span> <strong style='color: #4CAF50;'>", category_data, "</strong><br/>",
-            "<span style='color: #546E7A;'>📊 ", map_var, ":</span> <strong>", round(sovi_peta_valid[[map_var]], 2), "</strong>",
-            "</div>"
-          ), HTML),
-          labelOptions = labelOptions(
-            style = list("font-weight" = "normal", padding = "8px 12px", "border-radius" = "8px"),
-            textsize = "14px",
-            direction = "auto"
-          )
-        ) %>%
-        addLegend(
-          pal = pal, 
-          values = category_data, 
-          opacity = 0.8, 
-          title = HTML(paste0("<strong style='color: #2E7D32;'>", cat_var, "</strong>")),
-          position = "bottomright"
-        )
+      pal <- colorFactor(palette = cat_palette, domain = unique_cats)
     }
+    
+    leaflet(sovi_peta_valid) %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      setView(lng = 118, lat = -2, zoom = 5) %>%
+      addPolygons(
+        fillColor = if(input$beranda_map_category == "none") ~pal(sovi_peta_valid[[map_var]]) else ~pal(category_data),
+        weight = 1.5,
+        opacity = 1,
+        color = "white",
+        dashArray = "2",
+        fillOpacity = 0.8,
+        highlightOptions = highlightOptions(
+          weight = 3,
+          color = map_color_theme,
+          dashArray = "",
+          fillOpacity = 0.9,
+          bringToFront = TRUE
+        ),
+        label = ~lapply(paste(
+          "<div style='font-family: Arial; font-size: 14px; max-width: 320px; padding: 8px;'>",
+          "<strong style='color: ", map_color_theme, "; font-size: 16px;'>🏛️ ", nmkab, "</strong><br/>",
+          "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", nmprov, "</strong><br/>",
+          if(input$beranda_map_category != "none") paste0(
+            "<span style='color: #546E7A;'>🏷️ ", cat_var, ":</span> <strong style='color: ", map_color_theme, ";'>", 
+            ifelse(is.na(category_data), "N/A", as.character(category_data)), "</strong><br/>") else "",
+          "<span style='color: #546E7A;'>📊 ", map_var, ":</span> <strong style='color: ", map_color_theme, ";'>", round(sovi_peta_valid[[map_var]], 2), "</strong><br/>",
+          "<span style='color: #546E7A;'>👥 Populasi:</span> ", format(POPULATION, big.mark = ","), "<br/>",
+          "<span style='color: #546E7A;'>📈 Level:</span> <strong>", 
+          ifelse(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.75, na.rm = TRUE), "🔴 Tinggi",
+                 ifelse(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.25, na.rm = TRUE), "🟡 Sedang", "🟢 Rendah")), "</strong>",
+          "</div>"
+        ), HTML),
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "10px 15px", "border-radius" = "10px"),
+          textsize = "14px",
+          direction = "auto"
+        )
+      ) %>%
+      addLegend(
+        pal = pal, 
+        values = if(input$beranda_map_category == "none") sovi_peta_valid[[map_var]] else category_data, 
+        opacity = 0.8, 
+        title = HTML(paste0("<strong style='color: ", map_color_theme, ";'>", 
+                           if(input$beranda_map_category == "none") map_var else cat_var, "</strong>")),
+        position = "bottomright"
+      )
   })
   
-  # SOVI PETA Table functionality
+  # SOVI DATA Table functionality with spatial information
   output$sovi_data_table <- DT::renderDataTable({
-    # Create display data with proper formatting
-    display_data <- sovi_peta %>%
-      st_drop_geometry() %>%
-      select(
-        `Kode District` = DISTRICTCODE,
-        `Nama Kabupaten/Kota` = nmkab,
-        `Nama Provinsi` = nmprov,
-        `Kemiskinan (%)` = POVERTY,
-        `Pendidikan Rendah (%)` = LOWEDU,
-        `Lansia (%)` = ELDERLY,
-        `Pertumbuhan (%)` = GROWTH,
-        `Anak-anak (%)` = CHILDREN,
-        `Perempuan (%)` = FEMALE,
-        `Populasi` = POPULATION
+    # Merge sovi_data with geographic information from sovi_peta
+    display_data <- sovi_data %>%
+      left_join(
+        sovi_peta %>% 
+          st_drop_geometry() %>% 
+          select(DISTRICTCODE, nmkab, nmprov),
+        by = "DISTRICTCODE"
       ) %>%
-      filter(!is.na(`Kemiskinan (%)`))
+      select(
+        `District Code` = DISTRICTCODE,
+        `Kabupaten/Kota` = nmkab,
+        `Provinsi` = nmprov,
+        `Children (%)` = CHILDREN,
+        `Female (%)` = FEMALE,
+        `Elderly (%)` = ELDERLY,
+        `Family Head (%)` = FHEAD,
+        `Family Size` = FAMILYSIZE,
+        `No Electric (%)` = NOELECTRIC,
+        `Low Education (%)` = LOWEDU,
+        `Growth (%)` = GROWTH,
+        `Poverty (%)` = POVERTY,
+        `Illiterate (%)` = ILLITERATE,
+        `No Training (%)` = NOTRAINING,
+        `Disaster Prone (%)` = DPRONE,
+        `Rented (%)` = RENTED,
+        `No Sewer (%)` = NOSEWER,
+        `Tap Water (%)` = TAPWATER,
+        `Population` = POPULATION
+      ) %>%
+      filter(!is.na(`District Code`)) %>%
+      arrange(`District Code`)
     
     # Apply filters if any
     if(input$sovi_filter_var != "all") {
       var_mapping <- c(
-        "POVERTY" = "Kemiskinan (%)",
-        "LOWEDU" = "Pendidikan Rendah (%)",
-        "ELDERLY" = "Lansia (%)",
-        "GROWTH" = "Pertumbuhan (%)"
+        "POVERTY" = "Poverty (%)",
+        "LOWEDU" = "Low Education (%)",
+        "ELDERLY" = "Elderly (%)",
+        "GROWTH" = "Growth (%)"
       )
       
       var_col <- var_mapping[input$sovi_filter_var]
-      var_values <- display_data[[var_col]]
-      
-      if(!is.null(input$sovi_filter_level) && input$sovi_filter_level != "all_levels") {
-        q1 <- quantile(var_values, 0.25, na.rm = TRUE)
-        q3 <- quantile(var_values, 0.75, na.rm = TRUE)
+      if(var_col %in% names(display_data)) {
+        var_values <- display_data[[var_col]]
         
-        if(input$sovi_filter_level == "high") {
-          display_data <- display_data[var_values > q3, ]
-        } else if(input$sovi_filter_level == "medium") {
-          display_data <- display_data[var_values >= q1 & var_values <= q3, ]
-        } else if(input$sovi_filter_level == "low") {
-          display_data <- display_data[var_values < q1, ]
+        if(!is.null(input$sovi_filter_level) && input$sovi_filter_level != "all_levels") {
+          q1 <- quantile(var_values, 0.25, na.rm = TRUE)
+          q3 <- quantile(var_values, 0.75, na.rm = TRUE)
+          
+          if(input$sovi_filter_level == "high") {
+            display_data <- display_data[var_values > q3, ]
+          } else if(input$sovi_filter_level == "medium") {
+            display_data <- display_data[var_values >= q1 & var_values <= q3, ]
+          } else if(input$sovi_filter_level == "low") {
+            display_data <- display_data[var_values < q1, ]
+          }
         }
       }
     }
@@ -1799,37 +1801,42 @@ server <- function(input, output, session) {
         )
       ),
       extensions = 'Buttons',
-      caption = "🗺️ Dataset SOVI Peta - Data Lengkap dengan Nama Wilayah",
+      caption = "📊 Dataset SOVI - Data Lengkap dengan Informasi Geografis",
       filter = 'top',
       rownames = FALSE
     ) %>%
-      DT::formatRound(columns = which(sapply(display_data, is.numeric)) + 1, digits = 2) %>%
+      DT::formatRound(columns = which(sapply(display_data, is.numeric)), digits = 2) %>%
       DT::formatStyle(
-        columns = 1,  # Kode District
+        columns = "District Code",
         backgroundColor = colors[3],
         color = colors[1],
         fontWeight = "bold"
       ) %>%
       DT::formatStyle(
-        columns = c(2, 3),  # Nama kabupaten dan provinsi
+        columns = c("Kabupaten/Kota", "Provinsi"),
         backgroundColor = colors[3],
         color = colors[9],
         fontWeight = "500"
       ) %>%
       DT::formatStyle(
-        columns = 4:10,  # Data numerik
+        columns = 4:ncol(display_data),  # Data numerik
         backgroundColor = "white",
         color = colors[1]
       )
   })
   
   output$sovi_table_summary <- renderPrint({
-    total_sovi_peta <- nrow(sovi_peta %>% filter(!is.na(POVERTY)))
+    total_observations <- nrow(sovi_data)
+    total_with_geo <- nrow(sovi_data %>% 
+                          left_join(sovi_peta %>% st_drop_geometry() %>% select(DISTRICTCODE, nmkab), 
+                                   by = "DISTRICTCODE") %>% 
+                          filter(!is.na(nmkab)))
     
-    cat("🗺️ RINGKASAN DATA SOVI PETA\n")
-    cat("============================\n")
-    cat("Total Kabupaten/Kota:", total_sovi_peta, "\n")
-    cat("Provinsi Tercakup:", length(unique(sovi_peta$nmprov[!is.na(sovi_peta$POVERTY)])), "\n")
+    cat("📊 RINGKASAN DATA SOVI\n")
+    cat("======================\n")
+    cat("Total Observasi:", total_observations, "\n")
+    cat("Dengan Info Geografis:", total_with_geo, "\n")
+    cat("Variabel Tersedia:", ncol(sovi_data), "\n")
     
     if(input$sovi_filter_var != "all") {
       cat("Filter Aktif:", input$sovi_filter_var, "\n")
@@ -1842,19 +1849,16 @@ server <- function(input, output, session) {
       }
     }
     
-    cat("\nStatistik Cepat:\n")
-    cat("Rata-rata Kemiskinan:", round(mean(sovi_peta$POVERTY, na.rm = TRUE), 1), "%\n")
-    cat("Rata-rata Pendidikan Rendah:", round(mean(sovi_peta$LOWEDU, na.rm = TRUE), 1), "%\n")
-    cat("Rata-rata Lansia:", round(mean(sovi_peta$ELDERLY, na.rm = TRUE), 1), "%\n")
-    cat("Total Populasi:", format(sum(sovi_peta$POPULATION, na.rm = TRUE), big.mark = ","), "\n")
+    cat("\nStatistik Ringkas:\n")
+    cat("Rata-rata Poverty:", round(mean(sovi_data$POVERTY, na.rm = TRUE), 1), "%\n")
+    cat("Rata-rata Low Education:", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 1), "%\n")
+    cat("Rata-rata Elderly:", round(mean(sovi_data$ELDERLY, na.rm = TRUE), 1), "%\n")
+    cat("Rata-rata Growth:", round(mean(sovi_data$GROWTH, na.rm = TRUE), 1), "%\n")
+    cat("Total Population:", format(sum(sovi_data$POPULATION, na.rm = TRUE), big.mark = ","), "\n")
     
-    # Top 3 provinces by count
-    prov_count <- table(sovi_peta$nmprov[!is.na(sovi_peta$POVERTY)])
-    top_prov <- head(sort(prov_count, decreasing = TRUE), 3)
-    cat("\nProvinsi dengan Kabupaten/Kota Terbanyak:\n")
-    for(i in 1:length(top_prov)) {
-      cat(paste0(i, ". ", names(top_prov)[i], ": ", top_prov[i], " kab/kota\n"))
-    }
+    cat("\nRentang Data:\n")
+    cat("District Code:", min(sovi_data$DISTRICTCODE, na.rm = TRUE), "-", max(sovi_data$DISTRICTCODE, na.rm = TRUE), "\n")
+    cat("Data Completeness:", round(sum(complete.cases(sovi_data))/nrow(sovi_data)*100, 1), "%\n")
   })
   
   output$sovi_table_interpretation <- renderUI({
@@ -2369,13 +2373,13 @@ server <- function(input, output, session) {
                   position = "bottomright")
       
     } else if (input$map_type == "heatmap") {
-      # Heat map
+      # Heat map - fix the gradient issue
       map_base %>%
         addHeatmap(
           lng = ~longitude, lat = ~latitude,
           intensity = var_data,
           blur = 25, max = 0.8, radius = 20,
-          gradient = list('0' = '#E8F5E8', '0.4' = '#81C784', '0.7' = '#4CAF50', '1' = '#2E7D32')
+          gradient = c("blue", "cyan", "lime", "yellow", "red")
         )
       
     } else if (input$map_type == "cluster") {
@@ -3930,59 +3934,100 @@ server <- function(input, output, session) {
         report_rmd <- file.path(temp_dir, "report.Rmd")
         writeLines(report_content, report_rmd)
         
-        # Create outputs based on format
-        files_to_zip <- c()
-        
-        if (format_type %in% c("pdf", "all")) {
+        # Generate reports without R Markdown dependencies
+        if (format_type == "pdf" || format_type == "all") {
           tryCatch({
-            report_pdf <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
-            rmarkdown::render(report_rmd, output_format = "pdf_document", output_file = report_pdf, quiet = TRUE)
-            files_to_zip <- c(files_to_zip, report_pdf)
+            pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
+            pdf(pdf_file, width = 11, height = 8.5)
+            
+            # Create title page
+            plot.new()
+            text(0.5, 0.9, paste("🌟 NEXUS-SOVI Analytics Hub"), cex = 2, font = 2, col = "#1A237E")
+            text(0.5, 0.8, paste("Laporan Analisis", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
+            text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1)
+            text(0.5, 0.6, "STIS 2025 - Statistika Terapan", cex = 1.2, col = "#3949AB")
+            
+            # Add main plot
+            print(p1)
+            
+            # Add summary statistics page
+            plot.new()
+            text(0.5, 0.9, "Data Summary", cex = 1.5, font = 2)
+            summary_text <- paste(
+              "Dataset: Social Vulnerability Index",
+              paste("Total Observations:", nrow(sovi_data)),
+              paste("Variables:", ncol(sovi_data)),
+              paste("Analysis Focus:", tools::toTitleCase(tab_name)),
+              sep = "\n"
+            )
+            text(0.1, 0.7, summary_text, cex = 1, adj = 0)
+            
+            dev.off()
+            
             if (format_type == "pdf") {
-              file.copy(report_pdf, file)
+              file.copy(pdf_file, file)
               return()
             }
           }, error = function(e) {
-            # Fallback: create simple PDF
-            pdf(file.path(temp_dir, "simple_report.pdf"), width = 8, height = 11)
-            plot(p1)
-            text(0.5, 0.9, paste("Laporan", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
-            dev.off()
-            files_to_zip <- c(files_to_zip, file.path(temp_dir, "simple_report.pdf"))
+            # Simple fallback
+            file.copy(plot_file, file)
+            return()
           })
         }
         
-        if (format_type %in% c("word", "all")) {
-          tryCatch({
-            report_word <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".docx"))
-            rmarkdown::render(report_rmd, output_format = "word_document", output_file = report_word, quiet = TRUE)
-            files_to_zip <- c(files_to_zip, report_word)
-            if (format_type == "word") {
-              file.copy(report_word, file)
-              return()
-            }
-          }, error = function(e) {
-            # Create simple text file as fallback
-            simple_report <- file.path(temp_dir, "report.txt")
-            writeLines(paste("Laporan Analisis SOVI -", tools::toTitleCase(tab_name), "\nGenerated on:", Sys.time()), simple_report)
-            files_to_zip <- c(files_to_zip, simple_report)
-          })
+        if (format_type == "word" || format_type == "all") {
+          # Create simple HTML that can be opened as Word
+          html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
+          
+          html_content <- paste0(
+            "<!DOCTYPE html><html><head>",
+            "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
+            "<style>body{font-family:Arial;margin:40px;} h1{color:#1A237E;} h2{color:#3949AB;}</style>",
+            "</head><body>",
+            "<h1>🌟 NEXUS-SOVI Analytics Hub</h1>",
+            "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
+            "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
+            "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
+            "<p><strong>Total Observations:</strong> ", nrow(sovi_data), "</p>",
+            "<p><strong>Variables:</strong> ", ncol(sovi_data), "</p>",
+            "<h3>Summary Statistics</h3>",
+            "<p>Platform: NEXUS-SOVI Analytics Hub</p>",
+            "<p>Institution: STIS 2025</p>",
+            "<p>Course: Statistika Terapan</p>",
+            "</body></html>"
+          )
+          
+          writeLines(html_content, html_file)
+          
+          if (format_type == "word") {
+            file.copy(html_file, file)
+            return()
+          }
         }
         
         # Create ZIP for "all" format
         if (format_type == "all") {
-          files_to_zip <- c(files_to_zip, plot_file)
-          # Use base R zip if available
-          if(Sys.which("zip") != "") {
-            old_wd <- setwd(temp_dir)
-            system(paste("zip", shQuote(file), paste(basename(files_to_zip), collapse = " ")))
-            setwd(old_wd)
-          } else {
-            # Fallback: copy first available file
-            if(length(files_to_zip) > 0) {
-              file.copy(files_to_zip[1], file)
+          # Create a simple zip manually
+          tryCatch({
+            files_list <- c(plot_file)
+            if(file.exists(file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))) {
+              files_list <- c(files_list, file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))
             }
-          }
+            if(file.exists(file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html")))) {
+              files_list <- c(files_list, file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html")))
+            }
+            
+            # Simple zip creation
+            old_wd <- setwd(temp_dir)
+            zip_cmd <- paste("zip", shQuote(basename(file)), paste(shQuote(basename(files_list)), collapse = " "))
+            system(zip_cmd)
+            setwd(old_wd)
+            
+            file.copy(file.path(temp_dir, basename(file)), file)
+          }, error = function(e) {
+            # Fallback: just copy the plot
+            file.copy(plot_file, file)
+          })
         }
       }
     )
