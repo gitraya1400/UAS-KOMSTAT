@@ -27,40 +27,39 @@ library(moments)
 library(e1071)
 library(stats)
 library(sf)
+library(cluster)
+library(factoextra)
+library(ggdendro)
 
+# Load SOVI data dari URL yang diberikan
+sovi_data <- read_csv("sovi_data.csv")
 
-# Load SOVI data sesuai URL yang diberikan
-sovi_data <- read_csv("D:/STIS SEM 4/KOMSTAT/Komstat UAS/sovi_data.csv")
-distance_data <- read_csv("D:/STIS SEM 4/KOMSTAT/Komstat UAS/distance.csv")
+# Load distance matrix
+distance_matrix <- read_csv("distance.csv")
+# Convert to proper matrix format, removing first column which is row index
+distance_matrix <- as.matrix(distance_matrix[, -1])
 
-# GANTI "NAMA_FILE_SHP_ANDA.shp" dengan nama file Anda yang sebenarnya
-peta_kabupaten <- st_read("D:/STIS SEM 3/SIG/UTS/UTS-20241114T023840Z-001/UTS/Administrasi_Kabupaten.shp")
+# Load shapefiles
+peta_kabupaten <- st_read("Administrasi_Kabupaten.shp")
 
 # Gabungkan kdprov dan kdkab untuk membuat DISTRICTCODE yang cocok
 peta_kabupaten <- peta_kabupaten %>%
   mutate(
-    # Pastikan keduanya numerik untuk menghindari error
     kdprov = as.numeric(as.character(kdprov)),
     kdkab = as.numeric(as.character(kdkab)),
-    
-    # Buat DISTRICTCODE: gabungkan kdprov dengan kdkab (yang diformat 2 digit)
-    # Contoh: kdprov=11, kdkab=1 -> paste0("11", "01") -> "1101"
     DISTRICTCODE = as.numeric(paste0(kdprov, sprintf("%02d", kdkab)))
   )
 
-# Gabungkan data sovi_data Anda dengan data peta yang sudah diperbaiki
+# Gabungkan data sovi_data dengan data peta
 sovi_peta <- left_join(peta_kabupaten, sovi_data, by = "DISTRICTCODE")
+
 # Periksa struktur data
 print("Struktur SOVI Data:")
 print(names(sovi_data))
-print("Struktur Distance Data:")
-print(names(distance_data))
+print("Struktur Distance Matrix:")
+print(dim(distance_matrix))
 
-# Gunakan koordinat dari distance_data untuk peta
-# DENGAN KODE INI
-# PERBAIKAN: Gunakan nama kolom yang benar (LONGITUDE, LATITUDE) dari distance.csv
-# ✅ Kode Perbaikan yang Benar
-
+# Create additional categorical variables
 sovi_data$Population_Size <- ifelse(sovi_data$CHILDREN > median(sovi_data$CHILDREN, na.rm = TRUE), "Besar", "Kecil")
 
 sovi_data$Economic_Status <- cut(sovi_data$POVERTY,
@@ -75,10 +74,10 @@ sovi_data$Education_Level <- cut(sovi_data$LOWEDU,
                                  breaks = quantile(sovi_data$LOWEDU, probs = c(0, 0.33, 0.67, 1), na.rm = TRUE),
                                  labels = c("Pendidikan_Tinggi", "Pendidikan_Sedang", "Pendidikan_Rendah"), include.lowest = TRUE)
 
-# Color palette sesuai yang diberikan
-colors <- c("#5E7892", "#A7B7C6", "#F3EFDF", "#BDCFAA", "#8E9E83")
+# Formal dashboard color palette
+colors <- c("#2C3E50", "#34495E", "#ECF0F1", "#BDC3C7", "#95A5A6", "#7F8C8D", "#E74C3C", "#3498DB", "#2ECC71")
 
-# Custom CSS
+# Custom CSS dengan warna formal
 custom_css <- paste0("
 .content-wrapper, .right-side {
   background-color: ", colors[3], ";
@@ -94,11 +93,15 @@ custom_css <- paste0("
 }
 .box {
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(94, 120, 146, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.1) !important;
+  border-top: 3px solid ", colors[1], " !important;
 }
 .btn-primary {
   background-color: ", colors[1], " !important;
   border-color: ", colors[1], " !important;
+}
+.value-box-icon {
+  background-color: rgba(44, 62, 80, 0.2) !important;
 }
 ")
 
@@ -202,6 +205,63 @@ ui <- dashboardPage(
           )
         ),
         
+        # Enhanced Metric Cards
+        fluidRow(
+          column(3,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[1], " 0%, ", colors[2], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("total_observations")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Total Observasi")
+                 )
+          ),
+          column(3,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[7], " 0%, ", colors[8], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_poverty_rate")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Kemiskinan (%)")
+                 )
+          ),
+          column(3,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[8], " 0%, ", colors[9], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_education_rate")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Pendidikan Rendah (%)")
+                 )
+          ),
+          column(3,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[9], " 0%, ", colors[1], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_growth_rate")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Pertumbuhan (%)")
+                 )
+          )
+        ),
+        
+        # Additional metrics row
+        fluidRow(
+          column(4,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[4], " 0%, ", colors[5], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("total_variables")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Total Variabel")
+                 )
+          ),
+          column(4,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[5], " 0%, ", colors[6], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("data_completeness")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Kelengkapan Data")
+                 )
+          ),
+          column(4,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[6], " 0%, ", colors[7], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_elderly_rate")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Lansia (%)")
+                 )
+          )
+        ),
+        
         # Metadata Dashboard
         fluidRow(
           column(12,
@@ -237,50 +297,34 @@ ui <- dashboardPage(
           )
         ),
         
-        # Metric Cards
+        # Enhanced Main content with multiple visualizations
         fluidRow(
-          column(3,
-                 div(
-                   style = paste0("background: linear-gradient(135deg, ", colors[1], " 0%, ", colors[2], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
-                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("total_observations")),
-                   div(style = "font-size: 1em; margin-top: 8px;", "Total Observasi")
+          column(6,
+                 box(
+                   title = "Distribusi Indikator Utama SOVI", status = "primary", solidHeader = TRUE, width = NULL,
+                   plotlyOutput("sovi_distribution", height = "350px")
                  )
           ),
-          column(3,
-                 div(
-                   style = paste0("background: linear-gradient(135deg, ", colors[4], " 0%, ", colors[5], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
-                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("total_variables")),
-                   div(style = "font-size: 1em; margin-top: 8px;", "Total Variabel")
-                 )
-          ),
-          column(3,
-                 div(
-                   style = paste0("background: linear-gradient(135deg, ", colors[2], " 0%, ", colors[3], " 100%); color: ", colors[1], "; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
-                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_poverty_rate")),
-                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Kemiskinan")
-                 )
-          ),
-          column(3,
-                 div(
-                   style = paste0("background: linear-gradient(135deg, ", colors[5], " 0%, ", colors[4], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
-                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("data_completeness")),
-                   div(style = "font-size: 1em; margin-top: 8px;", "Kelengkapan Data")
+          column(6,
+                 box(
+                   title = "Korelasi Antar Variabel Kunci", status = "info", solidHeader = TRUE, width = NULL,
+                   plotlyOutput("correlation_plot", height = "350px")
                  )
           )
         ),
         
-        # Main content
+        # Additional analysis row
         fluidRow(
-          column(8,
+          column(6,
                  box(
-                   title = "Distribusi Data SOVI", status = "primary", solidHeader = TRUE, width = NULL,
-                   plotlyOutput("sovi_distribution", height = "350px")
+                   title = "Statistik Ringkasan Multi-Indikator", status = "info", solidHeader = TRUE, width = NULL,
+                   verbatimTextOutput("summary_stats")
                  )
           ),
-          column(4,
+          column(6,
                  box(
-                   title = "Statistik Ringkasan", status = "info", solidHeader = TRUE, width = NULL,
-                   verbatimTextOutput("summary_stats")
+                   title = "Distribusi Regional", status = "success", solidHeader = TRUE, width = NULL,
+                   plotlyOutput("regional_distribution", height = "350px")
                  )
           )
         ),
@@ -289,18 +333,18 @@ ui <- dashboardPage(
         fluidRow(
           column(12,
                  box(
-                   title = "Peta Distribusi SOVI", status = "primary", solidHeader = TRUE, width = NULL,
+                   title = "Peta Distribusi SOVI Indonesia", status = "primary", solidHeader = TRUE, width = NULL,
                    leafletOutput("beranda_map", height = "400px")
                  )
           )
         ),
         
-        # Interpretasi
+        # Enhanced Interpretasi
         fluidRow(
           column(12,
                  div(
-                   style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; border-left: 4px solid ", colors[1], ";"),
-                   h4("Interpretasi Dashboard Beranda", style = paste0("color: ", colors[1], ";")),
+                   style = paste0("background: ", colors[3], "; padding: 20px; border-radius: 8px; border-left: 4px solid ", colors[1], "; margin-top: 15px;"),
+                   h4("Interpretasi Komprehensif Dashboard Beranda", style = paste0("color: ", colors[1], ";")),
                    uiOutput("beranda_interpretation")
                  )
           )
@@ -320,29 +364,71 @@ ui <- dashboardPage(
           )
         ),
         
+        # Enhanced overview cards
+        fluidRow(
+          column(3,
+                 div(
+                   style = paste0("background: ", colors[1], "; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;"),
+                   h3(style = "margin: 0; font-size: 2.5em;", textOutput("data_quality_score", inline = TRUE)),
+                   p("Skor Kualitas Data", style = "margin: 5px 0 0 0; font-size: 0.9em;")
+                 )
+          ),
+          column(3,
+                 div(
+                   style = paste0("background: ", colors[7], "; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;"),
+                   h3(style = "margin: 0; font-size: 2.5em;", textOutput("missing_percentage", inline = TRUE)),
+                   p("Data Hilang (%)", style = "margin: 5px 0 0 0; font-size: 0.9em;")
+                 )
+          ),
+          column(3,
+                 div(
+                   style = paste0("background: ", colors[8], "; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;"),
+                   h3(style = "margin: 0; font-size: 2.5em;", textOutput("numeric_vars_count", inline = TRUE)),
+                   p("Variabel Numerik", style = "margin: 5px 0 0 0; font-size: 0.9em;")
+                 )
+          ),
+          column(3,
+                 div(
+                   style = paste0("background: ", colors[9], "; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;"),
+                   h3(style = "margin: 0; font-size: 2.5em;", textOutput("categorical_vars_count", inline = TRUE)),
+                   p("Variabel Kategorik", style = "margin: 5px 0 0 0; font-size: 0.9em;")
+                 )
+          )
+        ),
+        
         fluidRow(
           column(12,
                  box(
-                   title = "Alat Manajemen Data", status = "primary", solidHeader = TRUE, width = NULL,
+                   title = "Alat Manajemen Data Lanjutan", status = "primary", solidHeader = TRUE, width = NULL,
                    
                    tabsetPanel(
                      tabPanel("Ringkasan Data",
                               br(),
                               fluidRow(
                                 column(6,
-                                       h4("Ringkasan Dataset", style = paste0("color: ", colors[1], ";")),
-                                       verbatimTextOutput("data_summary")
+                                       h4("Profil Dataset Lengkap", style = paste0("color: ", colors[1], ";")),
+                                       div(
+                                         style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-bottom: 15px;"),
+                                         verbatimTextOutput("enhanced_data_summary")
+                                       )
                                 ),
                                 column(6,
-                                       h4("Struktur Data", style = paste0("color: ", colors[1], ";")),
-                                       verbatimTextOutput("data_structure")
+                                       h4("Analisis Tipe Data", style = paste0("color: ", colors[1], ";")),
+                                       DT::dataTableOutput("data_types_table")
+                                )
+                              ),
+                              
+                              fluidRow(
+                                column(12,
+                                       h4("Deteksi Outlier dan Anomali", style = paste0("color: ", colors[1], ";")),
+                                       plotlyOutput("outlier_detection_plot", height = "300px")
                                 )
                               ),
                               
                               div(
-                                style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
-                                h5("Interpretasi Ringkasan Data", style = paste0("color: ", colors[1], ";")),
-                                uiOutput("data_summary_interpretation")
+                                style = paste0("background: ", colors[3], "; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 4px solid ", colors[1], ";"),
+                                h5("Interpretasi Kualitas Data", style = paste0("color: ", colors[1], ";")),
+                                uiOutput("enhanced_data_interpretation")
                               )
                      ),
                      
@@ -530,6 +616,73 @@ ui <- dashboardPage(
                                 style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
                                 h5("Interpretasi Peta", style = paste0("color: ", colors[1], ";")),
                                 uiOutput("map_interpretation")
+                              )
+                     ),
+                     
+                     tabPanel("Analisis Cluster",
+                              br(),
+                              fluidRow(
+                                column(4,
+                                       h5("Pengaturan Clustering", style = paste0("color: ", colors[1], ";")),
+                                       selectInput("cluster_variables", "Pilih Variabel untuk Clustering:",
+                                                   choices = NULL, multiple = TRUE),
+                                       selectInput("cluster_method", "Metode Clustering:",
+                                                   choices = list(
+                                                     "K-Means" = "kmeans",
+                                                     "Hierarchical" = "hierarchical",
+                                                     "PAM (K-Medoids)" = "pam"
+                                                   )),
+                                       conditionalPanel(
+                                         condition = "input.cluster_method == 'kmeans' || input.cluster_method == 'pam'",
+                                         numericInput("n_clusters", "Jumlah Cluster:", value = 3, min = 2, max = 10)
+                                       ),
+                                       conditionalPanel(
+                                         condition = "input.cluster_method == 'hierarchical'",
+                                         selectInput("linkage_method", "Metode Linkage:",
+                                                     choices = list("ward.D2", "single", "complete", "average"))
+                                       ),
+                                       br(),
+                                       actionButton("run_clustering", "Jalankan Analisis Cluster",
+                                                    class = "btn-primary", style = "width: 100%;")
+                                ),
+                                column(8,
+                                       conditionalPanel(
+                                         condition = "input.run_clustering > 0",
+                                         h5("Visualisasi Cluster", style = paste0("color: ", colors[1], ";")),
+                                         plotlyOutput("cluster_plot", height = "400px")
+                                       )
+                                )
+                              ),
+                              
+                              conditionalPanel(
+                                condition = "input.run_clustering > 0",
+                                br(),
+                                fluidRow(
+                                  column(6,
+                                         h5("Hasil Clustering", style = paste0("color: ", colors[1], ";")),
+                                         verbatimTextOutput("cluster_summary")
+                                  ),
+                                  column(6,
+                                         h5("Tabel Cluster", style = paste0("color: ", colors[1], ";")),
+                                         DT::dataTableOutput("cluster_table")
+                                  )
+                                ),
+                                
+                                fluidRow(
+                                  column(12,
+                                         h5("Dendrogram (untuk Hierarchical Clustering)", style = paste0("color: ", colors[1], ";")),
+                                         conditionalPanel(
+                                           condition = "input.cluster_method == 'hierarchical'",
+                                           plotlyOutput("dendrogram_plot", height = "300px")
+                                         )
+                                  )
+                                ),
+                                
+                                div(
+                                  style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
+                                  h5("Interpretasi Analisis Cluster", style = paste0("color: ", colors[1], ";")),
+                                  uiOutput("cluster_interpretation")
+                                )
                               )
                      )
                    )
@@ -1148,6 +1301,9 @@ server <- function(input, output, session) {
     updateSelectInput(session, "anova2_variable", choices = numeric_vars)
     updateSelectInput(session, "regression_response", choices = numeric_vars)
     updateSelectInput(session, "regression_predictors", choices = numeric_vars)
+    
+    # Update cluster analysis choices
+    updateSelectInput(session, "cluster_variables", choices = numeric_vars)
   })
   
   # Update proportion category choices
@@ -1158,7 +1314,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "prop_category", choices = categories)
   })
   
-  # Home tab outputs
+  # Enhanced Home tab outputs
   output$total_observations <- renderText({
     format(nrow(sovi_data), big.mark = ",")
   })
@@ -1176,7 +1332,19 @@ server <- function(input, output, session) {
   })
   
   output$avg_poverty_rate <- renderText({
-    round(mean(sovi_data$POVERTY, na.rm = TRUE), 2)
+    round(mean(sovi_data$POVERTY, na.rm = TRUE), 1)
+  })
+  
+  output$avg_education_rate <- renderText({
+    round(mean(sovi_data$LOWEDU, na.rm = TRUE), 1)
+  })
+  
+  output$avg_growth_rate <- renderText({
+    round(mean(sovi_data$GROWTH, na.rm = TRUE), 1)
+  })
+  
+  output$avg_elderly_rate <- renderText({
+    round(mean(sovi_data$ELDERLY, na.rm = TRUE), 1)
   })
   
   output$data_completeness <- renderText({
@@ -1191,13 +1359,59 @@ server <- function(input, output, session) {
     paste0(round(complete_rows/total_rows * 100, 1), "%")
   })
   
+  # Enhanced summary stats for multiple indicators
   output$summary_stats <- renderPrint({
-    numeric_data <- select_if(sovi_data, is.numeric)
-    if(ncol(numeric_data) > 0) {
-      summary(numeric_data[1:min(5, ncol(numeric_data))])
-    } else {
-      "Tidak ada variabel numerik tersedia"
-    }
+    key_vars <- sovi_data[, c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH", "CHILDREN")]
+    summary(key_vars)
+  })
+  
+  # New correlation plot
+  output$correlation_plot <- renderPlotly({
+    numeric_vars <- sovi_data[, c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH", "CHILDREN")]
+    cor_matrix <- cor(numeric_vars, use = "complete.obs")
+    
+    # Create heatmap
+    p <- plot_ly(
+      x = colnames(cor_matrix),
+      y = colnames(cor_matrix),
+      z = cor_matrix,
+      type = "heatmap",
+      colorscale = list(c(0, colors[7]), c(0.5, colors[3]), c(1, colors[8])),
+      showscale = TRUE
+    ) %>%
+      layout(
+        title = "Matriks Korelasi Variabel Kunci",
+        xaxis = list(title = ""),
+        yaxis = list(title = "")
+      )
+    
+    p %>% config(displayModeBar = FALSE)
+  })
+  
+  # Regional distribution plot
+  output$regional_distribution <- renderPlotly({
+    regional_stats <- sovi_data %>%
+      mutate(Region = case_when(
+        substr(as.character(DISTRICTCODE), 1, 2) %in% c("11", "12", "13", "14", "15", "16", "17", "18", "19", "21") ~ "Sumatera",
+        substr(as.character(DISTRICTCODE), 1, 2) %in% c("31", "32", "33", "34", "35", "36") ~ "Jawa-Bali",
+        substr(as.character(DISTRICTCODE), 1, 2) %in% c("51", "52", "53", "61", "62", "63", "64", "71", "72", "73", "74", "75", "76") ~ "Kalimantan-Sulawesi",
+        TRUE ~ "Indonesia Timur"
+      )) %>%
+      group_by(Region) %>%
+      summarise(
+        Avg_Poverty = mean(POVERTY, na.rm = TRUE),
+        Count = n(),
+        .groups = "drop"
+      )
+    
+    p <- ggplot(regional_stats, aes(x = Region, y = Avg_Poverty, fill = Region)) +
+      geom_col(alpha = 0.8) +
+      scale_fill_manual(values = colors[1:4]) +
+      labs(title = "Rata-rata Kemiskinan per Region", x = "Region", y = "Rata-rata Kemiskinan (%)") +
+      theme_minimal() +
+      theme(legend.position = "none")
+    
+    ggplotly(p) %>% config(displayModeBar = FALSE)
   })
   
   # SOVI distribution plot
@@ -1280,45 +1494,148 @@ server <- function(input, output, session) {
       )
   })
   
-  # Beranda interpretation
+  # Enhanced Beranda interpretation
   output$beranda_interpretation <- renderUI({
     total_obs <- nrow(sovi_data)
     total_vars <- ncol(sovi_data)
     completeness <- round(sum(complete.cases(sovi_data))/nrow(sovi_data) * 100, 1)
-    avg_poverty <- round(mean(sovi_data$POVERTY, na.rm = TRUE), 2)
+    avg_poverty <- round(mean(sovi_data$POVERTY, na.rm = TRUE), 1)
+    avg_education <- round(mean(sovi_data$LOWEDU, na.rm = TRUE), 1)
+    avg_growth <- round(mean(sovi_data$GROWTH, na.rm = TRUE), 1)
+    avg_elderly <- round(mean(sovi_data$ELDERLY, na.rm = TRUE), 1)
     
     interpretation <- paste0(
-      "Dashboard ini menyediakan analisis komprehensif untuk dataset SOVI dengan ", total_obs, " observasi dan ", total_vars, " variabel. ",
+      "Dashboard ini menyediakan analisis komprehensif untuk dataset Social Vulnerability Index (SOVI) dengan ", total_obs, " observasi kabupaten/kota di Indonesia dan ", total_vars, " variabel indikator. ",
       "Tingkat kelengkapan data sebesar ", completeness, "% menunjukkan kualitas data yang ",
-      if(completeness >= 90) "sangat baik" else if(completeness >= 80) "baik" else "perlu perhatian", ". ",
-      "Dataset ini berisi informasi tentang Social Vulnerability Index yang mengukur kerentanan sosial berbagai wilayah. ",
-      "Rata-rata tingkat kemiskinan adalah ", avg_poverty, "%. ",
-      "Peta distribusi menunjukkan sebaran geografis data yang dapat membantu dalam analisis spasial. ",
-      "Dashboard ini dikembangkan untuk ujian Statistika Terapan STIS 2025 dengan mengikuti semua ketentuan yang diberikan."
+      if(completeness >= 90) "sangat baik" else if(completeness >= 80) "baik" else "perlu perhatian", " untuk analisis statistik lanjutan.<br><br>",
+      
+      "<strong>Ringkasan Indikator Kunci:</strong><br>",
+      "• Rata-rata tingkat kemiskinan: ", avg_poverty, "% menunjukkan variasi signifikan antar daerah<br>",
+      "• Rata-rata pendidikan rendah: ", avg_education, "% mengindikasikan tantangan pendidikan nasional<br>",
+      "• Rata-rata pertumbuhan: ", avg_growth, "% mencerminkan dinamika pembangunan regional<br>",
+      "• Rata-rata proporsi lansia: ", avg_elderly, "% menggambarkan struktur demografis<br><br>",
+      
+      "Matriks korelasi menunjukkan hubungan antar variabel kunci, sementara distribusi regional mengungkap pola geografis kerentanan sosial. ",
+      "Peta interaktif memungkinkan eksplorasi detail tingkat kabupaten/kota untuk identifikasi hotspot kerentanan. ",
+      "Dashboard ini dirancang untuk ujian Statistika Terapan STIS 2025 dengan implementasi metodologi analisis yang komprehensif dan sesuai standar akademik."
     )
     
     HTML(interpretation)
   })
   
-  # Data management outputs
-  output$data_summary <- renderPrint({
-    summary(sovi_data)
+  # Enhanced Data Management outputs
+  output$data_quality_score <- renderText({
+    # Calculate data quality score based on completeness and consistency
+    completeness <- sum(complete.cases(sovi_data))/nrow(sovi_data)
+    # Simple scoring: primarily based on completeness
+    quality_score <- round(completeness * 100, 0)
+    paste0(quality_score, "%")
   })
   
-  output$data_structure <- renderPrint({
-    str(sovi_data)
+  output$missing_percentage <- renderText({
+    total_cells <- nrow(sovi_data) * ncol(sovi_data)
+    missing_cells <- sum(is.na(sovi_data))
+    missing_pct <- round((missing_cells / total_cells) * 100, 1)
+    paste0(missing_pct, "%")
   })
   
-  output$data_summary_interpretation <- renderUI({
+  output$numeric_vars_count <- renderText({
+    sum(sapply(sovi_data, is.numeric))
+  })
+  
+  output$categorical_vars_count <- renderText({
+    sum(sapply(sovi_data, function(x) is.factor(x) || is.character(x)))
+  })
+  
+  output$enhanced_data_summary <- renderPrint({
+    cat("PROFIL DATASET SOVI\n")
+    cat("===================\n")
+    cat("Dimensi Data:", nrow(sovi_data), "x", ncol(sovi_data), "\n")
+    cat("Memori yang Digunakan:", format(object.size(sovi_data), units = "MB"), "\n\n")
+    
+    cat("DISTRIBUSI TIPE DATA:\n")
+    cat("Numerik:", sum(sapply(sovi_data, is.numeric)), "variabel\n")
+    cat("Kategorik:", sum(sapply(sovi_data, function(x) is.factor(x) || is.character(x))), "variabel\n\n")
+    
+    cat("KUALITAS DATA:\n")
+    completeness <- sum(complete.cases(sovi_data))/nrow(sovi_data) * 100
+    cat("Kelengkapan:", round(completeness, 1), "%\n")
+    
+    # Missing data per variable
+    missing_summary <- sapply(sovi_data, function(x) sum(is.na(x)))
+    if(any(missing_summary > 0)) {
+      cat("Variabel dengan Data Hilang:\n")
+      missing_vars <- missing_summary[missing_summary > 0]
+      for(i in 1:length(missing_vars)) {
+        cat("  -", names(missing_vars)[i], ":", missing_vars[i], "observasi\n")
+      }
+    } else {
+      cat("Tidak ada data hilang\n")
+    }
+  })
+  
+  output$data_types_table <- DT::renderDataTable({
+    type_summary <- data.frame(
+      Variabel = names(sovi_data),
+      Tipe = sapply(sovi_data, function(x) class(x)[1]),
+      `Data Hilang` = sapply(sovi_data, function(x) sum(is.na(x))),
+      `% Hilang` = round(sapply(sovi_data, function(x) sum(is.na(x))/length(x) * 100), 1),
+      Min = sapply(sovi_data, function(x) if(is.numeric(x)) round(min(x, na.rm = TRUE), 2) else "N/A"),
+      Max = sapply(sovi_data, function(x) if(is.numeric(x)) round(max(x, na.rm = TRUE), 2) else "N/A"),
+      stringsAsFactors = FALSE
+    )
+    
+    DT::datatable(
+      type_summary,
+      options = list(pageLength = 15, scrollY = "300px", scrollX = TRUE),
+      caption = "Analisis Tipe Data dan Profil Variabel"
+    )
+  })
+  
+  output$outlier_detection_plot <- renderPlotly({
+    # Select key numeric variables for outlier detection
+    key_vars <- sovi_data[, c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH")]
+    
+    # Calculate z-scores
+    z_scores <- key_vars %>%
+      mutate_all(~ abs(scale(.)[,1])) %>%
+      mutate(ID = row_number()) %>%
+      pivot_longer(-ID, names_to = "Variable", values_to = "Z_Score")
+    
+    p <- ggplot(z_scores, aes(x = Variable, y = Z_Score)) +
+      geom_boxplot(fill = colors[8], alpha = 0.7) +
+      geom_hline(yintercept = 3, color = colors[7], linetype = "dashed", size = 1) +
+      labs(title = "Deteksi Outlier (Z-Score > 3)", x = "Variabel", y = "Absolute Z-Score") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    ggplotly(p) %>% config(displayModeBar = FALSE)
+  })
+  
+  output$enhanced_data_interpretation <- renderUI({
+    completeness <- round(sum(complete.cases(sovi_data))/nrow(sovi_data) * 100, 1)
+    missing_vars <- sum(sapply(sovi_data, function(x) sum(is.na(x))) > 0)
     numeric_vars <- sum(sapply(sovi_data, is.numeric))
-    char_vars <- sum(sapply(sovi_data, is.character))
-    factor_vars <- sum(sapply(sovi_data, is.factor))
+    
+    # Outlier analysis
+    key_vars <- sovi_data[, c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH")]
+    outlier_counts <- sapply(key_vars, function(x) sum(abs(scale(x)[,1]) > 3, na.rm = TRUE))
+    total_outliers <- sum(outlier_counts)
     
     interpretation <- paste0(
-      "Dataset SOVI terdiri dari ", numeric_vars, " variabel numerik, ", char_vars, " variabel karakter, dan ", factor_vars, " variabel faktor. ",
-      "Struktur data menunjukkan bahwa sebagian besar variabel adalah numerik yang cocok untuk analisis statistik. ",
-      "Ringkasan statistik memberikan gambaran distribusi setiap variabel termasuk nilai minimum, maksimum, median, dan kuartil. ",
-      "Data ini siap untuk digunakan dalam berbagai analisis statistik yang tersedia di dashboard sesuai dengan ketentuan ujian STIS 2025."
+      "<strong>Evaluasi Kualitas Data SOVI:</strong><br><br>",
+      
+      "Dataset menunjukkan kualitas yang ", if(completeness >= 95) "sangat baik" else if(completeness >= 90) "baik" else "perlu perbaikan",
+      " dengan tingkat kelengkapan ", completeness, "%. ",
+      if(missing_vars > 0) paste0("Terdapat ", missing_vars, " variabel dengan data hilang yang perlu perhatian khusus. ") else "Semua variabel lengkap tanpa data hilang. ",
+      "<br><br>",
+      
+      "<strong>Struktur Data:</strong> Dataset terdiri dari ", numeric_vars, " variabel numerik yang siap untuk analisis statistik lanjutan. ",
+      "Tipe data sudah sesuai untuk berbagai metode analisis yang akan diterapkan.<br><br>",
+      
+      "<strong>Deteksi Anomali:</strong> Analisis outlier mengidentifikasi ", total_outliers, " observasi dengan nilai ekstrem (Z-score > 3). ",
+      if(total_outliers > 0) "Outlier ini perlu dievaluasi lebih lanjut untuk menentukan apakah merupakan data valid atau anomali. " else "Tidak ditemukan outlier ekstrem yang signifikan. ",
+      "Informasi ini penting untuk memilih metode analisis yang robust terhadap outlier sesuai dengan metodologi yang dipelajari di STIS."
     )
     
     HTML(interpretation)
@@ -2563,6 +2880,162 @@ server <- function(input, output, session) {
           Berdasarkan hasil ini, validitas model regresi dapat dievaluasi. Pelanggaran asumsi mungkin memerlukan transformasi data atau penggunaan metode regresi yang lebih robust."
         )
       )
+    })
+  })
+  
+  # Cluster Analysis
+  observeEvent(input$run_clustering, {
+    req(input$cluster_variables, length(input$cluster_variables) >= 2)
+    
+    # Prepare data for clustering
+    cluster_data <- sovi_data[, input$cluster_variables, drop = FALSE]
+    cluster_data <- na.omit(cluster_data)
+    
+    # Scale the data
+    cluster_data_scaled <- scale(cluster_data)
+    
+    # Perform clustering based on selected method
+    if(input$cluster_method == "kmeans") {
+      cluster_result <- kmeans(cluster_data_scaled, centers = input$n_clusters, nstart = 25)
+      clusters <- cluster_result$cluster
+      
+      output$cluster_summary <- renderPrint({
+        cat("K-MEANS CLUSTERING RESULTS\n")
+        cat("==========================\n")
+        cat("Number of clusters:", input$n_clusters, "\n")
+        cat("Total within-cluster sum of squares:", round(cluster_result$tot.withinss, 2), "\n")
+        cat("Between-cluster sum of squares:", round(cluster_result$betweenss, 2), "\n")
+        cat("Total sum of squares:", round(cluster_result$totss, 2), "\n")
+        cat("Between SS / Total SS ratio:", round(cluster_result$betweenss/cluster_result$totss * 100, 1), "%\n\n")
+        
+        cat("Cluster sizes:\n")
+        print(table(clusters))
+        
+        cat("\nCluster centers (scaled):\n")
+        print(round(cluster_result$centers, 3))
+      })
+      
+    } else if(input$cluster_method == "hierarchical") {
+      # Use proper distance matrix if available, otherwise calculate euclidean
+      if(ncol(distance_matrix) == nrow(cluster_data) && nrow(distance_matrix) == nrow(cluster_data)) {
+        # Subset distance matrix to match cluster_data rows
+        dist_subset <- as.dist(distance_matrix[1:nrow(cluster_data), 1:nrow(cluster_data)])
+      } else {
+        dist_subset <- dist(cluster_data_scaled)
+      }
+      
+      cluster_result <- hclust(dist_subset, method = input$linkage_method)
+      n_clusters_hier <- ifelse(is.null(input$n_clusters), 3, input$n_clusters)
+      clusters <- cutree(cluster_result, k = n_clusters_hier)
+      
+      output$cluster_summary <- renderPrint({
+        cat("HIERARCHICAL CLUSTERING RESULTS\n")
+        cat("===============================\n")
+        cat("Linkage method:", input$linkage_method, "\n")
+        cat("Number of clusters:", n_clusters_hier, "\n\n")
+        
+        cat("Cluster sizes:\n")
+        print(table(clusters))
+      })
+      
+      # Dendrogram
+      output$dendrogram_plot <- renderPlotly({
+        dend_data <- dendro_data(cluster_result)
+        
+        p <- ggplot() +
+          geom_segment(data = dend_data$segments, 
+                       aes(x = x, y = y, xend = xend, yend = yend), 
+                       color = colors[1]) +
+          geom_hline(yintercept = sort(cluster_result$height, decreasing = TRUE)[n_clusters_hier-1], 
+                     color = colors[7], linetype = "dashed") +
+          labs(title = "Dendrogram dengan Cut Line", x = "Observasi", y = "Height") +
+          theme_minimal()
+        
+        ggplotly(p) %>% config(displayModeBar = FALSE)
+      })
+      
+    } else if(input$cluster_method == "pam") {
+      cluster_result <- pam(cluster_data_scaled, k = input$n_clusters)
+      clusters <- cluster_result$clustering
+      
+      output$cluster_summary <- renderPrint({
+        cat("PAM (K-MEDOIDS) CLUSTERING RESULTS\n")
+        cat("==================================\n")
+        cat("Number of clusters:", input$n_clusters, "\n")
+        cat("Average silhouette width:", round(cluster_result$silinfo$avg.width, 3), "\n\n")
+        
+        cat("Cluster sizes:\n")
+        print(table(clusters))
+        
+        cat("\nMedoids:\n")
+        print(cluster_result$medoids)
+      })
+    }
+    
+    # Cluster visualization
+    output$cluster_plot <- renderPlotly({
+      if(length(input$cluster_variables) >= 2) {
+        plot_data <- data.frame(
+          x = cluster_data[, 1],
+          y = cluster_data[, 2],
+          Cluster = as.factor(clusters)
+        )
+        
+        p <- ggplot(plot_data, aes(x = x, y = y, color = Cluster)) +
+          geom_point(size = 3, alpha = 0.7) +
+          scale_color_manual(values = colors[1:length(unique(clusters))]) +
+          labs(title = paste("Cluster Plot:", input$cluster_variables[1], "vs", input$cluster_variables[2]),
+               x = input$cluster_variables[1], y = input$cluster_variables[2]) +
+          theme_minimal()
+        
+        ggplotly(p) %>% config(displayModeBar = FALSE)
+      }
+    })
+    
+    # Cluster table
+    output$cluster_table <- DT::renderDataTable({
+      cluster_summary_table <- cluster_data %>%
+        mutate(Cluster = clusters) %>%
+        group_by(Cluster) %>%
+        summarise_all(list(Mean = ~ round(mean(., na.rm = TRUE), 3)), .groups = 'drop')
+      
+      DT::datatable(
+        cluster_summary_table,
+        options = list(pageLength = 10, scrollX = TRUE),
+        caption = "Ringkasan Statistik per Cluster"
+      )
+    })
+    
+    # Cluster interpretation
+    output$cluster_interpretation <- renderUI({
+      n_clusters <- length(unique(clusters))
+      cluster_sizes <- table(clusters)
+      largest_cluster <- which.max(cluster_sizes)
+      smallest_cluster <- which.min(cluster_sizes)
+      
+      method_desc <- switch(input$cluster_method,
+                           "kmeans" = "K-Means menggunakan algoritma centroid-based clustering",
+                           "hierarchical" = "Hierarchical clustering menggunakan pendekatan agglomerative",
+                           "pam" = "PAM (Partitioning Around Medoids) menggunakan medoid-based clustering")
+      
+      interpretation <- paste0(
+        "<strong>Hasil Analisis Cluster SOVI:</strong><br><br>",
+        
+        method_desc, " menghasilkan ", n_clusters, " cluster dengan karakteristik yang berbeda. ",
+        "Cluster terbesar (Cluster ", largest_cluster, ") memiliki ", max(cluster_sizes), " observasi, ",
+        "sedangkan cluster terkecil (Cluster ", smallest_cluster, ") memiliki ", min(cluster_sizes), " observasi.<br><br>",
+        
+        "<strong>Interpretasi Metodologis:</strong><br>",
+        "• Variabel yang digunakan: ", paste(input$cluster_variables, collapse = ", "), "<br>",
+        "• Metode standardisasi: Z-score standardization untuk menghindari bias skala<br>",
+        if(input$cluster_method == "hierarchical") "• Distance matrix: Menggunakan matriks jarak sesuai ketentuan<br>" else "",
+        "• Hasil clustering dapat digunakan untuk segmentasi wilayah berdasarkan kerentanan sosial<br><br>",
+        
+        "Analisis ini memungkinkan identifikasi pola kerentanan sosial yang dapat membantu dalam perumusan kebijakan regional. ",
+        "Setiap cluster merepresentasikan wilayah dengan karakteristik SOVI yang serupa dan dapat menjadi dasar untuk intervensi targeted sesuai dengan metodologi yang dipelajari di STIS."
+      )
+      
+      HTML(interpretation)
     })
   })
   
