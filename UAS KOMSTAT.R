@@ -27,6 +27,7 @@ library(moments)
 library(e1071)
 library(stats)
 library(sf)
+library(cluster)
 
 
 # Load SOVI data sesuai URL yang diberikan
@@ -76,7 +77,8 @@ sovi_data$Education_Level <- cut(sovi_data$LOWEDU,
                                  labels = c("Pendidikan_Tinggi", "Pendidikan_Sedang", "Pendidikan_Rendah"), include.lowest = TRUE)
 
 # Color palette sesuai yang diberikan
-colors <- c("#5E7892", "#A7B7C6", "#F3EFDF", "#BDCFAA", "#8E9E83")
+formal_colors <- c("#2C3E50", "#2980B9", "#ECF0F1", "#27AE60", "#F1C40F")
+colors <- formal_colors
 
 # Custom CSS
 custom_css <- paste0("
@@ -94,11 +96,11 @@ custom_css <- paste0("
 }
 .box {
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(94, 120, 146, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.1) !important;
 }
 .btn-primary {
-  background-color: ", colors[1], " !important;
-  border-color: ", colors[1], " !important;
+  background-color: ", colors[2], " !important;
+  border-color: ", colors[2], " !important;
 }
 ")
 
@@ -239,32 +241,46 @@ ui <- dashboardPage(
         
         # Metric Cards
         fluidRow(
-          column(3,
+          column(2,
                  div(
                    style = paste0("background: linear-gradient(135deg, ", colors[1], " 0%, ", colors[2], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
                    div(style = "font-size: 2.5em; font-weight: 700;", textOutput("total_observations")),
                    div(style = "font-size: 1em; margin-top: 8px;", "Total Observasi")
                  )
           ),
-          column(3,
+          column(2,
                  div(
                    style = paste0("background: linear-gradient(135deg, ", colors[4], " 0%, ", colors[5], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
                    div(style = "font-size: 2.5em; font-weight: 700;", textOutput("total_variables")),
                    div(style = "font-size: 1em; margin-top: 8px;", "Total Variabel")
                  )
           ),
-          column(3,
+          column(2,
                  div(
                    style = paste0("background: linear-gradient(135deg, ", colors[2], " 0%, ", colors[3], " 100%); color: ", colors[1], "; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
                    div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_poverty_rate")),
                    div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Kemiskinan")
                  )
           ),
-          column(3,
+          column(2,
                  div(
                    style = paste0("background: linear-gradient(135deg, ", colors[5], " 0%, ", colors[4], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
-                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("data_completeness")),
-                   div(style = "font-size: 1em; margin-top: 8px;", "Kelengkapan Data")
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_children")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Anak (CHILDREN)")
+                 )
+          ),
+          column(2,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[1], " 0%, ", colors[4], " 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_elderly")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Lansia (ELDERLY)")
+                 )
+          ),
+          column(2,
+                 div(
+                   style = paste0("background: linear-gradient(135deg, ", colors[2], " 0%, ", colors[5], " 100%); color: ", colors[1], "; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;"),
+                   div(style = "font-size: 2.5em; font-weight: 700;", textOutput("avg_lowedu")),
+                   div(style = "font-size: 1em; margin-top: 8px;", "Rata-rata Pendidikan Rendah (LOWEDU)")
                  )
           )
         ),
@@ -530,6 +546,30 @@ ui <- dashboardPage(
                                 style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
                                 h5("Interpretasi Peta", style = paste0("color: ", colors[1], ";")),
                                 uiOutput("map_interpretation")
+                              )
+                     ),
+                     
+                     tabPanel("Analisis Klaster",
+                              br(),
+                              fluidRow(
+                                column(4,
+                                  selectInput("cluster_vars", "Pilih Variabel (minimal 2):", choices = NULL, multiple = TRUE),
+                                  selectInput("cluster_method", "Metode Klasterisasi:", choices = c("K-Means" = "kmeans", "Hierarchical" = "hclust")),
+                                  numericInput("n_cluster", "Jumlah Klaster:", value = 3, min = 2, max = 10),
+                                  actionButton("run_cluster", "Jalankan Klasterisasi", class = "btn-primary", style = "width:100%;")
+                                ),
+                                column(8,
+                                  h4("Plot Klaster", style = paste0("color: ", colors[1], ";")),
+                                  plotlyOutput("cluster_plot", height = "350px"),
+                                  h4("Ringkasan Klaster", style = paste0("color: ", colors[1], ";")),
+                                  DT::dataTableOutput("cluster_summary"),
+                                  h4("Silhouette Score", style = paste0("color: ", colors[1], ";")),
+                                  plotlyOutput("silhouette_plot", height = "250px")
+                                )
+                              ),
+                              div(style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
+                                  h5("Interpretasi Klaster", style = paste0("color: ", colors[1], ";")),
+                                  uiOutput("cluster_interpretation")
                               )
                      )
                    )
@@ -1148,6 +1188,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "anova2_variable", choices = numeric_vars)
     updateSelectInput(session, "regression_response", choices = numeric_vars)
     updateSelectInput(session, "regression_predictors", choices = numeric_vars)
+    updateSelectInput(session, "cluster_vars", choices = numeric_vars)
   })
   
   # Update proportion category choices
@@ -1301,8 +1342,17 @@ server <- function(input, output, session) {
   })
   
   # Data management outputs
-  output$data_summary <- renderPrint({
-    summary(sovi_data)
+  output$data_summary <- DT::renderDataTable({
+    num_vars <- select_if(sovi_data, is.numeric)
+    desc <- data.frame(
+      Variabel = names(num_vars),
+      Mean = sapply(num_vars, function(x) round(mean(x, na.rm=TRUE),2)),
+      Median = sapply(num_vars, function(x) round(median(x, na.rm=TRUE),2)),
+      SD = sapply(num_vars, function(x) round(sd(x, na.rm=TRUE),2)),
+      Min = sapply(num_vars, function(x) round(min(x, na.rm=TRUE),2)),
+      Max = sapply(num_vars, function(x) round(max(x, na.rm=TRUE),2))
+    )
+    DT::datatable(desc, options = list(pageLength = 8, dom = 't'), caption = "Ringkasan Statistik Variabel Numerik")
   })
   
   output$data_structure <- renderPrint({
@@ -2674,6 +2724,71 @@ server <- function(input, output, session) {
       output[[handler_name]] <- generate_download_handler(tab, fmt)
     }
   }
+  
+  # Cluster analysis
+  observeEvent(input$run_cluster, {
+    req(input$cluster_vars, length(input$cluster_vars) >= 2)
+    data_cluster <- sovi_data[, input$cluster_vars]
+    data_cluster <- na.omit(data_cluster)
+    dist_mat <- dist(scale(data_cluster))
+    nclust <- input$n_cluster
+    method <- input$cluster_method
+    if (method == "kmeans") {
+      set.seed(123)
+      clust <- kmeans(scale(data_cluster), centers = nclust, nstart = 25)
+      cluster_assign <- clust$cluster
+      sil <- silhouette(cluster_assign, dist_mat)
+    } else {
+      hc <- hclust(dist_mat, method = "ward.D2")
+      cluster_assign <- cutree(hc, k = nclust)
+      sil <- silhouette(cluster_assign, dist_mat)
+    }
+    sovi_data$CLUSTER <- NA
+    sovi_data$CLUSTER[as.numeric(rownames(data_cluster))] <- cluster_assign
+    values$cluster_assign <- cluster_assign
+    values$silhouette <- sil
+    values$data_cluster <- data_cluster
+    # Summary table
+    output$cluster_summary <- DT::renderDataTable({
+      tab <- data.frame(Cluster = 1:nclust,
+                        Size = as.numeric(table(cluster_assign)),
+                        Ave.Sil.Width = tapply(sil[,3], cluster_assign, mean))
+      DT::datatable(tab, options = list(dom = 't'), caption = "Ringkasan Klaster")
+    })
+    # Cluster plot (PCA 2D)
+    output$cluster_plot <- renderPlotly({
+      pca <- prcomp(scale(data_cluster))
+      df <- data.frame(PC1 = pca$x[,1], PC2 = pca$x[,2], Cluster = factor(cluster_assign))
+      p <- ggplot(df, aes(x = PC1, y = PC2, color = Cluster)) +
+        geom_point(size = 2, alpha = 0.8) +
+        scale_color_manual(values = colors[1:nclust]) +
+        theme_minimal() +
+        labs(title = "Visualisasi Klaster (PCA)")
+      ggplotly(p)
+    })
+    # Silhouette plot
+    output$silhouette_plot <- renderPlotly({
+      sil_df <- data.frame(cluster = factor(sil[,1]), sil_width = sil[,3])
+      p <- ggplot(sil_df, aes(x = cluster, y = sil_width, fill = cluster)) +
+        geom_boxplot(alpha = 0.7) +
+        scale_fill_manual(values = colors[1:nclust]) +
+        theme_minimal() +
+        labs(title = "Silhouette Width per Cluster", x = "Cluster", y = "Silhouette Width")
+      ggplotly(p)
+    })
+    # Interpretasi
+    output$cluster_interpretation <- renderUI({
+      avg_sil <- mean(sil[,3])
+      HTML(paste0("Rata-rata silhouette width: ", round(avg_sil, 3), ". Nilai mendekati 1 menandakan klaster yang baik. Gunakan hasil klaster ini untuk analisis lanjutan."))
+    })
+  })
+  
+  # Average children
+  output$avg_children <- renderText({ round(mean(sovi_data$CHILDREN, na.rm=TRUE),2) })
+  # Average elderly
+  output$avg_elderly <- renderText({ round(mean(sovi_data$ELDERLY, na.rm=TRUE),2) })
+  # Average lowedu
+  output$avg_lowedu <- renderText({ round(mean(sovi_data$LOWEDU, na.rm=TRUE),2) })
 }
 
 # Run the app
