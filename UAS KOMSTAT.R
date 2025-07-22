@@ -1585,9 +1585,13 @@ server <- function(input, output, session) {
       )) %>%
       group_by(Region) %>%
       summarise(
-        Value = if(analysis_type == "mean") mean(.data[[var_name]], na.rm = TRUE) 
-        else if(analysis_type == "median") median(.data[[var_name]], na.rm = TRUE)
-        else sum(.data[[var_name]], na.rm = TRUE),
+        Value = if(analysis_type == "mean") {
+                  mean(.data[[var_name]], na.rm = TRUE)
+                } else if(analysis_type == "median") {
+                  median(.data[[var_name]], na.rm = TRUE)
+                } else {
+                  sum(.data[[var_name]], na.rm = TRUE)
+                },
         Count = n(),
         .groups = "drop"
       )
