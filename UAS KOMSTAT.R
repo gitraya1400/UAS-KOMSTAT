@@ -573,7 +573,16 @@ ui <- dashboardPage(
                                     uiOutput("categorization_interpretation")
                                   )
                                 )
-                              )
+                     ),
+                     tabPanel("Tabel",
+                       br(),
+                       h4("SOVI DATA (Filter & Eksplorasi)", style = paste0("color: ", colors[1], ";")),
+                       DT::dataTableOutput("sovi_data_table"),
+                       div(
+                         style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
+                         h5("Interpretasi SOVI DATA", style = paste0("color: ", colors[1], ";")),
+                         uiOutput("sovi_data_interpretation")
+                       )
                      )
                    )
                  )
@@ -3398,6 +3407,36 @@ server <- function(input, output, session) {
       output[[handler_name]] <- generate_download_handler(tab, fmt)
     }
   }
+  
+  # --- [START: Add SOVI DATA Table Tab in Data Management] ---
+  # Find the tabsetPanel in Data Management and add this after 'Kategorisasi Data' tabPanel:
+  tabPanel("Tabel",
+    br(),
+    h4("SOVI DATA (Filter & Eksplorasi)", style = paste0("color: ", colors[1], ";")),
+    DT::dataTableOutput("sovi_data_table"),
+    div(
+      style = paste0("background: ", colors[3], "; padding: 15px; border-radius: 8px; margin-top: 15px;"),
+      h5("Interpretasi SOVI DATA", style = paste0("color: ", colors[1], ";")),
+      uiOutput("sovi_data_interpretation")
+    )
+  ),
+  # --- [END: Add SOVI DATA Table Tab in Data Management] ---
+  
+  # --- [START: SOVI DATA Table Server Logic] ---
+  output$sovi_data_table <- DT::renderDataTable({
+    DT::datatable(
+      sovi_peta,
+      options = list(pageLength = 15, scrollX = TRUE, scrollY = "400px"),
+      filter = "top",
+      caption = "Tabel Data SOVI (dapat difilter dan dieksplorasi)"
+    )
+  })
+  output$sovi_data_interpretation <- renderUI({
+    HTML(paste0(
+      "Tabel ini menampilkan seluruh data SOVI yang telah digabung dengan peta administratif. Anda dapat memfilter, mencari, dan mengekspor data sesuai kebutuhan. Data ini menjadi dasar analisis spasial dan statistik pada dashboard. Pastikan interpretasi dilakukan sesuai konteks wilayah dan indikator yang dipilih.")
+    )
+  })
+  # --- [END: SOVI DATA Table Server Logic] ---
 }
 
 # Run the app
