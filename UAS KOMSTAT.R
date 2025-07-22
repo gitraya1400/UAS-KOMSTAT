@@ -3591,7 +3591,7 @@ server <- function(input, output, session) {
         "• Cluster terkecil: <strong>Cluster ", smallest_cluster, "</strong> (", min(cluster_sizes), " provinsi)<br>",
         "• Rata-rata provinsi per cluster: ", round(total_provinces/n_clusters, 1), " provinsi<br><br>",
         
-        "<strong>🎯 Interpretasi Kebijakan:</strong><br>",
+                      "<strong>Interpretasi Kebijakan:</strong><br>",
         "• <strong>Variabel Analisis:</strong> ", paste(input$cluster_variables, collapse = ", "), "<br>",
         "• <strong>Unit Analisis:</strong> Provinsi (agregasi kabupaten/kota)<br>",
         "• <strong>Peta Interaktif:</strong> Menampilkan cluster spasial dengan hover detail<br>",
