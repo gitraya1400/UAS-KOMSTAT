@@ -763,7 +763,6 @@ ui <- dashboardPage(
                                                    choices = list(
                                                      "🏛️ Choropleth (Polygon)" = "choropleth",
                                                      "📍 Scatter Points" = "scatter",
-                                                     "🔥 Heat Map" = "heatmap",
                                                      "🎯 Cluster Points" = "cluster",
                                                      "🌡️ Contour Map" = "contour",
                                                      "📊 Proportional Symbols" = "symbols"
@@ -810,8 +809,12 @@ ui <- dashboardPage(
                                 column(8,
                                        conditionalPanel(
                                          condition = "input.run_clustering > 0",
-                                         h5("🗺️ Peta Cluster Provinsi Interaktif", style = paste0("color: ", colors[1], ";")),
-                                         leafletOutput("cluster_plot", height = "500px")
+                                         h5("📊 Hasil Analisis Cluster", style = paste0("color: ", colors[1], ";")),
+                                         div(
+                                           style = paste0("background: ", colors[3], "; padding: 20px; border-radius: 8px; text-align: center;"),
+                                           h4("✅ Analisis Cluster Selesai", style = paste0("color: ", colors[1], ";")),
+                                           p("Lihat hasil detail di bagian tabel dan interpretasi di bawah.", style = "margin: 10px 0;")
+                                         )
                                        )
                                 )
                               ),
@@ -2372,16 +2375,6 @@ server <- function(input, output, session) {
                   title = HTML(paste0("<strong style='color: #2E7D32;'>", input$map_variable, "</strong>")),
                   position = "bottomright")
       
-    } else if (input$map_type == "heatmap") {
-      # Heat map - fix the gradient issue
-      map_base %>%
-        addHeatmap(
-          lng = ~longitude, lat = ~latitude,
-          intensity = var_data,
-          blur = 25, max = 0.8, radius = 20,
-          gradient = c("blue", "cyan", "lime", "yellow", "red")
-        )
-      
     } else if (input$map_type == "cluster") {
       # Cluster points
       map_base %>%
@@ -3508,99 +3501,7 @@ server <- function(input, output, session) {
       })
     }
     
-    # Interactive Provincial Cluster Map
-    output$cluster_plot <- renderLeaflet({
-      req(input$cluster_variables, length(input$cluster_variables) >= 2, exists("clusters"))
-      
-      # Create cluster data for provinces
-      province_cluster_data <- province_data %>%
-        mutate(Cluster = as.factor(clusters))
-      
-      # Merge with spatial data
-      sovi_cluster_map <- sovi_peta %>%
-        left_join(province_cluster_data %>% select(nmprov, Cluster), by = "nmprov") %>%
-        filter(!is.na(Cluster))
-      
-      if(nrow(sovi_cluster_map) == 0) {
-        return(leaflet() %>% addTiles() %>% setView(lng = 118, lat = -2, zoom = 5))
-      }
-      
-      # Define cluster colors (green theme variations)
-      cluster_colors <- c("#2E7D32", "#4CAF50", "#81C784", "#A5D6A7", "#C8E6C9", 
-                         "#66BB6A", "#26A69A", "#00695C", "#004D40")[1:length(unique(clusters))]
-      
-      pal <- colorFactor(
-        palette = cluster_colors,
-        domain = sovi_cluster_map$Cluster
-      )
-      
-      # Create enhanced hover labels for cluster map
-      create_cluster_label <- function(kab, prov, cluster, poverty, lowedu, elderly) {
-        cluster_desc <- switch(as.character(cluster),
-                              "1" = "Cluster Dinamis",
-                              "2" = "Cluster Berkembang", 
-                              "3" = "Cluster Tradisional",
-                              paste("Cluster", cluster))
-        
-        paste0(
-          "<div style='font-family: Arial; font-size: 14px; max-width: 320px; padding: 10px;'>",
-          "<strong style='color: #2E7D32; font-size: 16px;'>🏛️ ", kab, "</strong><br/>",
-          "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", prov, "</strong><br/>",
-          "<span style='color: #546E7A;'>🎯 ", cluster_desc, ":</span> <strong style='color: ", cluster_colors[as.numeric(cluster)], ";'>", cluster, "</strong><br/>",
-          "<hr style='margin: 8px 0; border: 1px solid #E0E0E0;'>",
-          "<span style='color: #546E7A;'>💰 Kemiskinan:</span> <strong>", round(poverty, 1), "%</strong><br/>",
-          "<span style='color: #546E7A;'>🎓 Pendidikan Rendah:</span> <strong>", round(lowedu, 1), "%</strong><br/>",
-          "<span style='color: #546E7A;'>👴 Lansia:</span> <strong>", round(elderly, 1), "%</strong>",
-          "</div>"
-        )
-      }
-      
-      leaflet(sovi_cluster_map) %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = 118, lat = -2, zoom = 5) %>%
-        addPolygons(
-          fillColor = ~pal(Cluster),
-          weight = 2,
-          opacity = 1,
-          color = "white",
-          dashArray = "2",
-          fillOpacity = 0.8,
-          highlightOptions = highlightOptions(
-            weight = 4,
-            color = "#1B5E20",
-            dashArray = "",
-            fillOpacity = 0.9,
-            bringToFront = TRUE
-          ),
-          label = ~lapply(create_cluster_label(nmkab, nmprov, Cluster, POVERTY, LOWEDU, ELDERLY), HTML),
-          labelOptions = labelOptions(
-            style = list("font-weight" = "normal", padding = "10px 15px", "border-radius" = "10px"),
-            textsize = "14px",
-            direction = "auto"
-          )
-        ) %>%
-        addLegend(
-          pal = pal,
-          values = ~Cluster,
-          opacity = 0.9,
-          title = HTML("<strong style='color: #2E7D32; font-size: 16px;'>🎯 Cluster Provinsi</strong>"),
-          position = "bottomright"
-        ) %>%
-        # Add cluster summary popup
-        addControl(
-          html = paste0(
-            "<div style='background: rgba(46, 125, 50, 0.9); color: white; padding: 15px; border-radius: 10px; font-family: Arial;'>",
-            "<h4 style='margin: 0 0 10px 0;'>🏛️ Analisis Cluster Provinsi</h4>",
-            "<p style='margin: 0; font-size: 13px;'>",
-            "<strong>", length(unique(clusters)), " Cluster</strong> | ",
-            "<strong>", nrow(province_data), " Provinsi</strong><br/>",
-            "Metode: ", tools::toTitleCase(input$cluster_method), "<br/>",
-            "Variabel: ", paste(input$cluster_variables, collapse = ", "),
-            "</p></div>"
-          ),
-          position = "topright"
-        )
-    })
+
     
     # Enhanced Cluster table with province details
     output$cluster_table <- DT::renderDataTable({
@@ -3975,8 +3876,8 @@ server <- function(input, output, session) {
           })
         }
         
-        if (format_type == "word" || format_type == "all") {
-          # Create simple HTML that can be opened as Word
+        if (format_type == "word") {
+          # Create simple HTML that can be opened as Word - WORD ONLY
           html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
           
           html_content <- paste0(
@@ -3998,11 +3899,33 @@ server <- function(input, output, session) {
           )
           
           writeLines(html_content, html_file)
+          file.copy(html_file, file)
+          return()
+        }
+        
+        if (format_type == "all") {
+          # Create HTML for ALL format only
+          html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
           
-          if (format_type == "word") {
-            file.copy(html_file, file)
-            return()
-          }
+          html_content <- paste0(
+            "<!DOCTYPE html><html><head>",
+            "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
+            "<style>body{font-family:Arial;margin:40px;} h1{color:#1A237E;} h2{color:#3949AB;}</style>",
+            "</head><body>",
+            "<h1>🌟 NEXUS-SOVI Analytics Hub</h1>",
+            "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
+            "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
+            "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
+            "<p><strong>Total Observations:</strong> ", nrow(sovi_data), "</p>",
+            "<p><strong>Variables:</strong> ", ncol(sovi_data), "</p>",
+            "<h3>Summary Statistics</h3>",
+            "<p>Platform: NEXUS-SOVI Analytics Hub</p>",
+            "<p>Institution: STIS 2025</p>",
+            "<p>Course: Statistika Terapan</p>",
+            "</body></html>"
+          )
+          
+          writeLines(html_content, html_file)
         }
         
         # Create ZIP for "all" format
