@@ -3,9 +3,9 @@
     "path": "~/KS UAS 65/UAS KOMSTAT.R",
     "project_path": "UAS KOMSTAT.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "2031813183",
     "contents": "",
-    "dirty": true,
+    "dirty": false,
     "created": 1753204063201.0,
     "source_on_save": false,
     "relative_order": 1,
@@ -13,15 +13,15 @@
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "2679,34",
-        "scrollLine": "15"
+        "cursorPosition": "3402,13",
+        "scrollLine": "3360"
     },
     "folds": "",
-    "lastKnownWriteTime": 1753204090,
+    "lastKnownWriteTime": 1753210721,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1753204415726,
+    "last_content_update": 1753210721933,
     "read_only": false,
     "read_only_alternatives": []
 }
