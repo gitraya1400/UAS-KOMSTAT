@@ -795,7 +795,7 @@ ui <- dashboardPage(
                               br(),
                               fluidRow(
                                 column(4,
-                                       h5("🎯 Pengaturan Clustering Provinsi", style = paste0("color: ", colors[1], ";")),
+                                       h5("Pengaturan Clustering Provinsi", style = paste0("color: ", colors[1], ";")),
                                        selectInput("cluster_variables", "Pilih Variabel untuk Clustering:",
                                                    choices = NULL, multiple = TRUE),
                                        selectInput("cluster_method", "Metode Clustering:",
@@ -3927,39 +3927,45 @@ server <- function(input, output, session) {
             text(0.5, 0.6, paste("Generated:", format(Sys.time(), "%d %B %Y, %H:%M")), cex = 1.1)
             text(0.5, 0.5, "Politeknik Statistika STIS 2025", cex = 1.2, col = "#1565C0")
             
-            # Create and add plot
-            if(tab_name == "beranda") {
-              p1 <- ggplot(sovi_data, aes(x = POVERTY)) + 
+            # Add main visualization
+            plot_data <- switch(tab_name,
+              "beranda" = ggplot(sovi_data, aes(x = POVERTY)) + 
                 geom_histogram(bins = 30, fill = "#1565C0", alpha = 0.7, color = "white") + 
                 labs(title = "Distribusi Tingkat Kemiskinan", x = "Tingkat Kemiskinan (%)", y = "Frekuensi") + 
-                theme_minimal()
-            } else if(tab_name == "eksplorasi") {
-              p1 <- ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
-                geom_point(color = "#1565C0", alpha = 0.6) + 
+                theme_minimal() + theme(plot.title = element_text(size = 14, face = "bold")),
+              "eksplorasi" = ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
+                geom_point(color = "#1565C0", alpha = 0.6, size = 2) + 
                 geom_smooth(method = "lm", color = "#1976D2") + 
                 labs(title = "Hubungan Kemiskinan vs Pendidikan Rendah", x = "Tingkat Kemiskinan (%)", y = "Pendidikan Rendah (%)") + 
-                theme_minimal()
-            } else {
-              p1 <- ggplot(sovi_data, aes(x = GROWTH, y = POVERTY)) + 
-                geom_point(color = "#1565C0", alpha = 0.6) + 
-                labs(title = paste("Analisis", tools::toTitleCase(tab_name)), x = "Pertumbuhan", y = "Kemiskinan") + 
-                theme_minimal()
-            }
-            print(p1)
-            
-            # Text summary page
-            plot.new()
-            text(0.5, 0.9, "Ringkasan Analisis", cex = 1.8, font = 2, col = "#1565C0")
-            summary_text <- paste(
-              paste("Dataset: Social Vulnerability Index"),
-              paste("Total Observasi:", nrow(sovi_data)),
-              paste("Variabel:", ncol(sovi_data)),
-              paste("Rata-rata Kemiskinan:", round(mean(sovi_data$POVERTY, na.rm = TRUE), 2), "%"),
-              paste("Rata-rata Pendidikan Rendah:", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 2), "%"),
-              paste("Focus:", tools::toTitleCase(tab_name)),
-              sep = "\n"
+                theme_minimal() + theme(plot.title = element_text(size = 14, face = "bold")),
+              ggplot(sovi_data, aes(x = GROWTH, y = POVERTY)) + 
+                geom_point(color = "#1565C0", alpha = 0.6, size = 2) + 
+                labs(title = paste("Analisis", tools::toTitleCase(tab_name)), x = "Pertumbuhan (%)", y = "Kemiskinan (%)") + 
+                theme_minimal() + theme(plot.title = element_text(size = 14, face = "bold"))
             )
-            text(0.1, 0.7, summary_text, cex = 1.1, adj = 0)
+            print(plot_data)
+            
+            # Comprehensive summary page
+            plot.new()
+            text(0.5, 0.95, "Ringkasan Statistik & Analisis", cex = 1.8, font = 2, col = "#1565C0")
+            
+            summary_stats <- c(
+              paste("Dataset: Social Vulnerability Index (SOVI)"),
+              paste("Total Observasi:", nrow(sovi_data), "kabupaten/kota"),
+              paste("Total Variabel:", ncol(sovi_data), "indikator"),
+              paste("Kelengkapan Data:", round(sum(complete.cases(sovi_data))/nrow(sovi_data)*100, 1), "%"),
+              "",
+              "Statistik Deskriptif Utama:",
+              paste("  • Rata-rata Kemiskinan:", round(mean(sovi_data$POVERTY, na.rm = TRUE), 2), "%"),
+              paste("  • Rata-rata Pendidikan Rendah:", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 2), "%"),
+              paste("  • Rata-rata Lansia:", round(mean(sovi_data$ELDERLY, na.rm = TRUE), 2), "%"),
+              paste("  • Rata-rata Pertumbuhan:", round(mean(sovi_data$GROWTH, na.rm = TRUE), 2), "%"),
+              "",
+              paste("Fokus Analisis:", tools::toTitleCase(tab_name)),
+              paste("Waktu Generate:", format(Sys.time(), "%d %B %Y, %H:%M:%S"))
+            )
+            
+            text(0.05, 0.85, paste(summary_stats, collapse = "\n"), cex = 1, adj = 0, font = 1)
             
             dev.off()
             return()
@@ -3970,86 +3976,133 @@ server <- function(input, output, session) {
           })
         }
         
-        # ZIP: All formats combined
+        # ZIP: Complete package with all formats
         if (format_type == "all") {
-          # Create all three files
-          jpg_file <- file.path(temp_dir, paste0("DAVIRA_", tools::toTitleCase(tab_name), "_Plot.jpg"))
-          html_file <- file.path(temp_dir, paste0("DAVIRA_", tools::toTitleCase(tab_name), "_Report.html"))
-          pdf_file <- file.path(temp_dir, paste0("DAVIRA_", tools::toTitleCase(tab_name), "_Complete.pdf"))
-          
-          # Generate JPG
-          if(tab_name == "beranda") {
-            p1 <- ggplot(sovi_data, aes(x = POVERTY)) + 
-              geom_histogram(bins = 30, fill = "#1565C0", alpha = 0.7, color = "white") + 
-              labs(title = "Distribusi Tingkat Kemiskinan", x = "Tingkat Kemiskinan (%)", y = "Frekuensi") + 
-              theme_minimal()
-          } else if(tab_name == "eksplorasi") {
-            p1 <- ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
-              geom_point(color = "#1565C0", alpha = 0.6) + 
-              geom_smooth(method = "lm", color = "#1976D2") + 
-              labs(title = "Hubungan Kemiskinan vs Pendidikan Rendah", x = "Tingkat Kemiskinan (%)", y = "Pendidikan Rendah (%)") + 
-              theme_minimal()
-          } else {
-            p1 <- ggplot(sovi_data, aes(x = GROWTH, y = POVERTY)) + 
-              geom_point(color = "#1565C0", alpha = 0.6) + 
-              labs(title = paste("Analisis", tools::toTitleCase(tab_name)), x = "Pertumbuhan", y = "Kemiskinan") + 
-              theme_minimal()
-          }
-          ggsave(jpg_file, plot = p1, device = "jpeg", width = 12, height = 8, dpi = 300)
-          
-          # Generate HTML report
-          tab_content <- switch(tab_name,
-            "beranda" = paste0(
-              "<h2>Ringkasan Dataset SOVI</h2>",
-              "<p>Total Observasi: ", nrow(sovi_data), "</p>",
-              "<p>Variabel: ", ncol(sovi_data), "</p>",
-              "<p>Rata-rata Kemiskinan: ", round(mean(sovi_data$POVERTY, na.rm = TRUE), 2), "%</p>",
-              "<p>Rata-rata Pendidikan Rendah: ", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 2), "%</p>"
-            ),
-            "asumsi" = paste0(
-              "<h2>Hasil Uji Asumsi</h2>",
-              "<p>Uji normalitas, homogenitas, dan linearitas telah dilakukan.</p>",
-              "<p>Interpretasi: Data menunjukkan karakteristik distribusi yang sesuai untuk analisis lanjutan.</p>"
-            ),
-            "inferensia" = paste0(
-              "<h2>Hasil Statistik Inferensia</h2>",
-              "<p>Uji t, uji proporsi, dan ANOVA telah dilakukan.</p>",
-              "<p>Kesimpulan: Terdapat perbedaan signifikan antar kelompok berdasarkan variabel yang diuji.</p>"
-            ),
-            paste0("<h2>Hasil Analisis ", tools::toTitleCase(tab_name), "</h2>",
-                   "<p>Analisis telah dilakukan sesuai dengan parameter yang dipilih.</p>")
-          )
-          
-          html_content <- paste0(
-            "<!DOCTYPE html><html><head>",
-            "<title>DAVIRA - ", tools::toTitleCase(tab_name), "</title>",
-            "<style>body{font-family:Arial;margin:40px;line-height:1.6;} h1{color:#1565C0;} h2{color:#1976D2;}</style>",
-            "</head><body>",
-            "<h1>DAVIRA</h1>",
-            "<p><strong>Dashboard Analisis SOVI by Raya | STIS 2025</strong></p>",
-            "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
-            tab_content,
-            "</body></html>"
-          )
-          writeLines(html_content, html_file)
-          
-          # Generate PDF
           tryCatch({
-            pdf(pdf_file, width = 11, height = 8.5)
-            plot.new()
-            text(0.5, 0.9, "DAVIRA", cex = 2.5, font = 2, col = "#1565C0")
-            text(0.5, 0.8, "Dashboard Analisis SOVI by Raya", cex = 1.5, font = 2)
-            text(0.5, 0.7, paste("Laporan", tools::toTitleCase(tab_name)), cex = 1.8, font = 2, col = "#1976D2")
-            print(p1)
-            dev.off()
-          }, error = function(e) {
-            writeLines("DAVIRA PDF", pdf_file)
-          })
+            # Define file paths
+            base_name <- paste0("DAVIRA_", tools::toTitleCase(tab_name))
+            jpg_file <- file.path(temp_dir, paste0(base_name, "_Visualization.jpg"))
+            html_file <- file.path(temp_dir, paste0(base_name, "_Report.html"))
+            pdf_file <- file.path(temp_dir, paste0(base_name, "_Complete.pdf"))
+            
+            # Create JPG visualization
+            plot_data <- switch(tab_name,
+              "beranda" = ggplot(sovi_data, aes(x = POVERTY)) + 
+                geom_histogram(bins = 30, fill = "#1565C0", alpha = 0.7, color = "white") + 
+                labs(title = "DAVIRA - Distribusi Tingkat Kemiskinan", x = "Tingkat Kemiskinan (%)", y = "Frekuensi") + 
+                theme_minimal() + theme(plot.title = element_text(size = 16, face = "bold")),
+              "eksplorasi" = ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
+                geom_point(color = "#1565C0", alpha = 0.6, size = 2) + 
+                geom_smooth(method = "lm", color = "#1976D2") + 
+                labs(title = "DAVIRA - Eksplorasi: Kemiskinan vs Pendidikan", x = "Tingkat Kemiskinan (%)", y = "Pendidikan Rendah (%)") + 
+                theme_minimal() + theme(plot.title = element_text(size = 16, face = "bold")),
+              ggplot(sovi_data, aes(x = GROWTH, y = POVERTY)) + 
+                geom_point(color = "#1565C0", alpha = 0.6, size = 2) + 
+                labs(title = paste("DAVIRA -", tools::toTitleCase(tab_name)), x = "Pertumbuhan (%)", y = "Kemiskinan (%)") + 
+                theme_minimal() + theme(plot.title = element_text(size = 16, face = "bold"))
+            )
+            ggsave(jpg_file, plot = plot_data, device = "jpeg", width = 12, height = 8, dpi = 300, bg = "white")
+            
+            # Create comprehensive HTML report  
+            html_content <- paste0(
+              "<!DOCTYPE html><html><head>",
+              "<meta charset='UTF-8'>",
+              "<title>DAVIRA - ", tools::toTitleCase(tab_name), " Report</title>",
+              "<style>",
+              "body{font-family:'Segoe UI',Arial,sans-serif;margin:30px;line-height:1.6;color:#2C3E50;background:#f8f9fa;} ",
+              ".container{max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);} ",
+              "h1{color:#1565C0;border-bottom:3px solid #1976D2;padding-bottom:10px;text-align:center;} ",
+              "h2{color:#1976D2;margin-top:25px;} ",
+              "table{border-collapse:collapse;width:100%;margin:15px 0;} ",
+              "td,th{border:1px solid #ddd;padding:12px;text-align:left;} ",
+              "th{background-color:#E3F2FD;color:#1565C0;font-weight:bold;} ",
+              ".stats{background:#f8f9fa;padding:15px;border-radius:5px;margin:15px 0;}",
+              "</style>",
+              "</head><body><div class='container'>",
+              "<h1>DAVIRA</h1>",
+              "<p style='text-align:center;'><strong>Dashboard Analisis SOVI by Raya</strong><br>",
+              "<em>Politeknik Statistika STIS 2025</em></p>",
+              "<hr>",
+              "<div class='stats'>",
+              "<p><strong>Section:</strong> ", tools::toTitleCase(tab_name), "</p>",
+              "<p><strong>Generated:</strong> ", format(Sys.time(), "%d %B %Y, %H:%M"), "</p>",
+              "</div>"
+            )
+            
+            # Add section-specific content
+            if(tab_name == "beranda") {
+              html_content <- paste0(html_content,
+                "<h2>Ringkasan Dataset SOVI</h2>",
+                "<table><tr><th>Statistik</th><th>Nilai</th></tr>",
+                "<tr><td>Total Observasi</td><td>", nrow(sovi_data), " kabupaten/kota</td></tr>",
+                "<tr><td>Total Variabel</td><td>", ncol(sovi_data), " indikator</td></tr>",
+                "<tr><td>Kelengkapan Data</td><td>", round(sum(complete.cases(sovi_data))/nrow(sovi_data)*100, 1), "%</td></tr>",
+                "<tr><td>Rata-rata Kemiskinan</td><td>", round(mean(sovi_data$POVERTY, na.rm = TRUE), 2), "%</td></tr>",
+                "<tr><td>Rata-rata Pendidikan Rendah</td><td>", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 2), "%</td></tr>",
+                "</table>"
+              )
+            } else {
+              html_content <- paste0(html_content,
+                "<h2>Hasil Analisis ", tools::toTitleCase(tab_name), "</h2>",
+                "<p>Proses analisis berhasil diselesaikan dengan parameter yang dipilih pengguna.</p>",
+                "<div class='stats'>",
+                "<p><strong>Status:</strong> Analisis Completed</p>",
+                "<p><strong>Timestamp:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "</p>",
+                "</div>"
+              )
+            }
+            
+            html_content <- paste0(html_content,
+              "<hr><p style='text-align:center;'><small>Generated by DAVIRA Dashboard System</small></p>",
+              "</div></body></html>"
+            )
+            writeLines(html_content, html_file)
           
-          # Create ZIP
-          zip_files <- c(jpg_file, html_file, pdf_file)
-          zip::zip(file, zip_files, mode = "cherry-pick")
-          return()
+            # Generate comprehensive PDF
+            tryCatch({
+              pdf(pdf_file, width = 11, height = 8.5)
+              
+              # Title page
+              plot.new()
+              text(0.5, 0.9, "DAVIRA", cex = 3, font = 2, col = "#1565C0")
+              text(0.5, 0.8, "Dashboard Analisis SOVI by Raya", cex = 1.8, font = 2, col = "#1976D2")
+              text(0.5, 0.7, paste("Complete Report -", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
+              text(0.5, 0.6, paste("Generated:", format(Sys.time(), "%d %B %Y, %H:%M")), cex = 1.1)
+              text(0.5, 0.5, "Politeknik Statistika STIS 2025", cex = 1.2, col = "#1565C0")
+              
+              # Add plot
+              print(plot_data)
+              
+              # Summary page
+              plot.new()
+              text(0.5, 0.95, "Complete Statistical Summary", cex = 1.8, font = 2, col = "#1565C0")
+              summary_text <- paste(
+                paste("Dataset: Social Vulnerability Index (SOVI)"),
+                paste("Total Observations:", nrow(sovi_data), "districts"),
+                paste("Variables:", ncol(sovi_data), "indicators"),
+                paste("Data Completeness:", round(sum(complete.cases(sovi_data))/nrow(sovi_data)*100, 1), "%"),
+                paste("Analysis Focus:", tools::toTitleCase(tab_name)),
+                paste("Report Generated:", format(Sys.time(), "%d %B %Y, %H:%M:%S")),
+                sep = "\n"
+              )
+              text(0.05, 0.85, summary_text, cex = 1, adj = 0, font = 1)
+              
+              dev.off()
+            }, error = function(e) {
+              writeLines(paste("DAVIRA PDF Error:", e$message), pdf_file)
+            })
+            
+            # Create ZIP archive with all formats
+            if(file.exists(jpg_file) && file.exists(html_file) && file.exists(pdf_file)) {
+              zip_files <- c(jpg_file, html_file, pdf_file)
+              zip::zip(file, zip_files, mode = "cherry-pick")
+            } else {
+              writeLines("DAVIRA - Some files missing in ZIP creation", file)
+            }
+            
+          }, error = function(e) {
+            writeLines(paste("DAVIRA ZIP Error:", e$message), file)
+          })
         }
         
 
