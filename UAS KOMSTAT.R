@@ -125,7 +125,7 @@ ui <- dashboardPage(
   skin = "blue",
   
   dashboardHeader(
-    title = "Dashboard Analisis SOVI - Ujian STIS 2025",
+    title = "🌟 NEXUS-SOVI Analytics Hub 🏛️",
     titleWidth = 400
   ),
   
@@ -213,8 +213,8 @@ ui <- dashboardPage(
           column(12,
                  div(
                    style = paste0("background: linear-gradient(135deg, ", colors[1], " 0%, ", colors[2], " 100%); color: white; padding: 25px; margin-bottom: 25px; border-radius: 8px; text-align: center;"),
-                   h1("Dashboard Analisis SOVI", style = "margin: 0; font-weight: 600;"),
-                   p("Social Vulnerability Index Analysis - Ujian Statistika Terapan STIS 2025", style = "margin: 10px 0 0 0; opacity: 0.9;")
+                   h1("🌟 NEXUS-SOVI Analytics Hub", style = "margin: 0; font-weight: 600; font-size: 2.5em;"),
+                   p("🏛️ Advanced Social Vulnerability Intelligence Platform | STIS 2025 🏆", style = "margin: 10px 0 0 0; opacity: 0.9; font-size: 1.2em;")
                  )
           )
         ),
@@ -320,46 +320,6 @@ ui <- dashboardPage(
                              tags$li(tags$strong("Lisensi:"), " Open Data License"),
                              tags$li(tags$strong("Update Terakhir:"), " 2021"),
                              tags$li(tags$strong("DOI:"), " 10.1016/j.dib.2021.107664")
-                     )
-                   )
-                 )
-          )
-        ),
-        
-        fluidRow(
-          column(12,
-                 box(
-                   title = "Akses Metadata", status = "success", solidHeader = TRUE, width = NULL,
-                   div(
-                     style = "padding: 20px; text-align: center;",
-                     fluidRow(
-                       column(4,
-                              div(style = paste0("background: ", colors[3], "; padding: 20px; border-radius: 10px; margin: 10px;"),
-                                  h5("📥 Download Metadata", style = paste0("color: ", colors[1], ";")),
-                                  downloadButton("download_metadata", "Download Metadata Lengkap", 
-                                                 class = "btn-success", style = "width: 100%; margin: 5px;"),
-                                  br(), br(),
-                                  tags$small("Format: JSON dengan semua informasi struktural")
-                              )
-                       ),
-                       column(4,
-                              div(style = paste0("background: ", colors[3], "; padding: 20px; border-radius: 10px; margin: 10px;"),
-                                  h5("👁️ Preview Git Repository", style = paste0("color: ", colors[1], ";")),
-                                  actionButton("preview_git", "Preview Repository", 
-                                               class = "btn-info", style = "width: 100%; margin: 5px;"),
-                                  br(), br(),
-                                  tags$small("Akses cepat ke repository GitHub")
-                              )
-                       ),
-                       column(4,
-                              div(style = paste0("background: ", colors[3], "; padding: 20px; border-radius: 10px; margin: 10px;"),
-                                  h5("📋 Informasi Ujian", style = paste0("color: ", colors[1], ";")),
-                                  tags$p(strong("Tanggal:"), "23 Juli 2025", style = "margin: 5px 0;"),
-                                  tags$p(strong("Waktu:"), "10.30-12.30 WIB", style = "margin: 5px 0;"),
-                                  tags$a("Fakta Integritas", href = "https://s.stis.ac.id/Fakta_integritas_KOMSTAT",
-                                         target = "_blank", class = "btn btn-warning btn-sm", style = "width: 100%;")
-                              )
-                       )
                      )
                    )
                  )
@@ -480,18 +440,10 @@ ui <- dashboardPage(
                                         ), selected = "none")
                      ),
                      column(4,
-                            selectInput("beranda_map_colors", "Skema Warna:",
-                                        choices = list(
-                                          "Green Theme" = "Greens",
-                                          "Blue-Green" = "BuGn", 
-                                          "Green-Blue" = "GnBu",
-                                          "Viridis" = "viridis",
-                                          "Plasma" = "plasma",
-                                          "Cool Mint" = "BuGn",
-                                          "Ocean Deep" = "Blues",
-                                          "Forest" = "Greens",
-                                          "Neptune" = "RdYlGn"
-                                        ), selected = "Greens")
+                            div(
+                              style = paste0("background: ", colors[3], "; padding: 10px; border-radius: 6px;"),
+                              h6("Skema Warna Konsisten: Green Professional", style = paste0("color: ", colors[1], "; margin: 0;"))
+                            )
                      )
                    ),
                    leafletOutput("beranda_map", height = "400px")
@@ -649,11 +601,11 @@ ui <- dashboardPage(
                               )
                      ),
                      
-                     tabPanel("SOVI DATA",
+                     tabPanel("SOVI PETA",
                               br(),
                               div(
                                 style = paste0("background: white; border-radius: 8px; padding: 20px; border: 1px solid ", colors[2], ";"),
-                                h4("Tabel Data SOVI Interaktif", style = paste0("color: ", colors[1], ";")),
+                                h4("🗺️ Tabel Data SOVI Peta Interaktif", style = paste0("color: ", colors[1], ";")),
                                 
                                 fluidRow(
                                   column(6,
@@ -809,8 +761,12 @@ ui <- dashboardPage(
                                                    choices = NULL),
                                        selectInput("map_type", "Jenis Peta:",
                                                    choices = list(
-                                                     "Scatter Plot" = "scatter",
-                                                     "Heat Map" = "heatmap"
+                                                     "🏛️ Choropleth (Polygon)" = "choropleth",
+                                                     "📍 Scatter Points" = "scatter",
+                                                     "🔥 Heat Map" = "heatmap",
+                                                     "🎯 Cluster Points" = "cluster",
+                                                     "🌡️ Contour Map" = "contour",
+                                                     "📊 Proportional Symbols" = "symbols"
                                                    ))
                                 ),
                                 column(9,
@@ -1671,18 +1627,22 @@ server <- function(input, output, session) {
       config(displayModeBar = FALSE)
   })
   
-  # Enhanced Beranda map (dynamic)
+  # Enhanced Beranda map with consistent green theme
   output$beranda_map <- renderLeaflet({
-    req(input$beranda_map_var, input$beranda_map_category, input$beranda_map_colors)
+    req(input$beranda_map_var, input$beranda_map_category)
     
     # Filter valid data
     map_var <- input$beranda_map_var
     sovi_peta_valid <- sovi_peta %>% filter(!is.na(.data[[map_var]]))
     
+    if(nrow(sovi_peta_valid) == 0) {
+      return(leaflet() %>% addTiles() %>% setView(lng = 118, lat = -2, zoom = 5))
+    }
+    
     if(input$beranda_map_category == "none") {
-      # Continuous variable mapping
+      # Continuous variable mapping with green theme
       pal <- colorNumeric(
-        palette = input$beranda_map_colors,
+        palette = c("#E8F5E8", "#81C784", "#4CAF50", "#2E7D32", "#1B5E20"),
         domain = sovi_peta_valid[[map_var]]
       )
       
@@ -1695,47 +1655,47 @@ server <- function(input, output, session) {
           opacity = 1,
           color = "white",
           dashArray = "3",
-          fillOpacity = 0.7,
+          fillOpacity = 0.8,
           highlightOptions = highlightOptions(
             weight = 3,
-            color = "#666",
+            color = "#2E7D32",
             dashArray = "",
-            fillOpacity = 0.7,
+            fillOpacity = 0.9,
             bringToFront = TRUE
           ),
           label = ~lapply(paste(
-            "<div style='font-family: Arial; font-size: 14px;'>",
-            "<strong style='color: #2E7D32; font-size: 16px;'>", nmkab, "</strong><br/>",
-            "<span style='color: #546E7A;'>🏛️ Provinsi:</span> <strong>", nmprov, "</strong><br/>",
+            "<div style='font-family: Arial; font-size: 14px; max-width: 300px;'>",
+            "<strong style='color: #2E7D32; font-size: 16px;'>🏛️ ", nmkab, "</strong><br/>",
+            "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", nmprov, "</strong><br/>",
             "<span style='color: #546E7A;'>📊 ", map_var, ":</span> <strong style='color: #4CAF50;'>", round(sovi_peta_valid[[map_var]], 2), "</strong><br/>",
             "<span style='color: #546E7A;'>👥 Populasi:</span> ", format(POPULATION, big.mark = ","), "<br/>",
-            "<span style='color: #546E7A;'>📈 Interpretasi:</span> ", 
-            if(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.75, na.rm = TRUE)) "Tinggi" 
-            else if(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.25, na.rm = TRUE)) "Sedang" 
-            else "Rendah",
+            "<span style='color: #546E7A;'>📈 Level:</span> <strong>", 
+            ifelse(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.75, na.rm = TRUE), "🔴 Tinggi",
+                   ifelse(sovi_peta_valid[[map_var]] > quantile(sovi_peta_valid[[map_var]], 0.25, na.rm = TRUE), "🟡 Sedang", "🟢 Rendah")), "</strong>",
             "</div>"
           ), HTML),
           labelOptions = labelOptions(
-            style = list("font-weight" = "normal", padding = "3px 8px"),
-            textsize = "15px",
+            style = list("font-weight" = "normal", padding = "8px 12px", "border-radius" = "8px"),
+            textsize = "14px",
             direction = "auto"
           )
         ) %>%
         addLegend(
           pal = pal, 
           values = sovi_peta_valid[[map_var]], 
-          opacity = 0.7, 
-          title = map_var,
+          opacity = 0.8, 
+          title = HTML(paste0("<strong style='color: #2E7D32;'>", map_var, "</strong>")),
           position = "bottomright"
         )
     } else {
-      # Categorical variable mapping
+      # Categorical variable mapping with green theme
       cat_var <- input$beranda_map_category
       category_data <- sovi_peta_valid[[cat_var]]
       unique_cats <- unique(category_data[!is.na(category_data)])
       
+      green_palette <- c("#2E7D32", "#4CAF50", "#81C784", "#A5D6A7", "#C8E6C9")
       pal <- colorFactor(
-        palette = colors[1:length(unique_cats)],
+        palette = green_palette[1:length(unique_cats)],
         domain = unique_cats
       )
       
@@ -1748,61 +1708,85 @@ server <- function(input, output, session) {
           opacity = 1,
           color = "white",
           dashArray = "3",
-          fillOpacity = 0.7,
+          fillOpacity = 0.8,
           highlightOptions = highlightOptions(
             weight = 3,
-            color = "#666",
+            color = "#2E7D32",
             dashArray = "",
-            fillOpacity = 0.7,
+            fillOpacity = 0.9,
             bringToFront = TRUE
           ),
           label = ~lapply(paste(
-            "<strong>", nmkab, "</strong><br/>",
-            "Provinsi: ", nmprov, "<br/>",
-            cat_var, ": ", category_data, "<br/>",
-            map_var, ": ", round(sovi_peta_valid[[map_var]], 2)
+            "<div style='font-family: Arial; font-size: 14px; max-width: 300px;'>",
+            "<strong style='color: #2E7D32; font-size: 16px;'>🏛️ ", nmkab, "</strong><br/>",
+            "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", nmprov, "</strong><br/>",
+            "<span style='color: #546E7A;'>🏷️ ", cat_var, ":</span> <strong style='color: #4CAF50;'>", category_data, "</strong><br/>",
+            "<span style='color: #546E7A;'>📊 ", map_var, ":</span> <strong>", round(sovi_peta_valid[[map_var]], 2), "</strong>",
+            "</div>"
           ), HTML),
           labelOptions = labelOptions(
-            style = list("font-weight" = "normal", padding = "3px 8px"),
-            textsize = "15px",
+            style = list("font-weight" = "normal", padding = "8px 12px", "border-radius" = "8px"),
+            textsize = "14px",
             direction = "auto"
           )
         ) %>%
         addLegend(
           pal = pal, 
           values = category_data, 
-          opacity = 0.7, 
-          title = cat_var,
+          opacity = 0.8, 
+          title = HTML(paste0("<strong style='color: #2E7D32;'>", cat_var, "</strong>")),
           position = "bottomright"
         )
     }
   })
   
-  # SOVI Data Table functionality
+  # SOVI PETA Table functionality
   output$sovi_data_table <- DT::renderDataTable({
-    # Apply filters
-    filtered_data <- sovi_data
+    # Create display data with proper formatting
+    display_data <- sovi_peta %>%
+      st_drop_geometry() %>%
+      select(
+        `Kode District` = DISTRICTCODE,
+        `Nama Kabupaten/Kota` = nmkab,
+        `Nama Provinsi` = nmprov,
+        `Kemiskinan (%)` = POVERTY,
+        `Pendidikan Rendah (%)` = LOWEDU,
+        `Lansia (%)` = ELDERLY,
+        `Pertumbuhan (%)` = GROWTH,
+        `Anak-anak (%)` = CHILDREN,
+        `Perempuan (%)` = FEMALE,
+        `Populasi` = POPULATION
+      ) %>%
+      filter(!is.na(`Kemiskinan (%)`))
     
+    # Apply filters if any
     if(input$sovi_filter_var != "all") {
-      var_col <- input$sovi_filter_var
-      var_values <- sovi_data[[var_col]]
+      var_mapping <- c(
+        "POVERTY" = "Kemiskinan (%)",
+        "LOWEDU" = "Pendidikan Rendah (%)",
+        "ELDERLY" = "Lansia (%)",
+        "GROWTH" = "Pertumbuhan (%)"
+      )
+      
+      var_col <- var_mapping[input$sovi_filter_var]
+      var_values <- display_data[[var_col]]
       
       if(!is.null(input$sovi_filter_level) && input$sovi_filter_level != "all_levels") {
         q1 <- quantile(var_values, 0.25, na.rm = TRUE)
         q3 <- quantile(var_values, 0.75, na.rm = TRUE)
         
         if(input$sovi_filter_level == "high") {
-          filtered_data <- sovi_data[var_values > q3, ]
+          display_data <- display_data[var_values > q3, ]
         } else if(input$sovi_filter_level == "medium") {
-          filtered_data <- sovi_data[var_values >= q1 & var_values <= q3, ]
+          display_data <- display_data[var_values >= q1 & var_values <= q3, ]
         } else if(input$sovi_filter_level == "low") {
-          filtered_data <- sovi_data[var_values < q1, ]
+          display_data <- display_data[var_values < q1, ]
         }
       }
     }
     
     DT::datatable(
-      filtered_data,
+      display_data,
       options = list(
         pageLength = 25,
         scrollX = TRUE,
@@ -1810,62 +1794,66 @@ server <- function(input, output, session) {
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'print'),
         columnDefs = list(
-          list(targets = "_all", className = "dt-center"),
-          list(targets = 0, className = "dt-left")
+          list(targets = c(1, 2), className = "dt-left"),  # Nama wilayah rata kiri
+          list(targets = "_all", className = "dt-center")
         )
       ),
       extensions = 'Buttons',
-      caption = "Dataset SOVI - Filterable dan Downloadable",
+      caption = "🗺️ Dataset SOVI Peta - Data Lengkap dengan Nama Wilayah",
       filter = 'top',
       rownames = FALSE
     ) %>%
-      DT::formatRound(columns = which(sapply(filtered_data, is.numeric)), digits = 2) %>%
+      DT::formatRound(columns = which(sapply(display_data, is.numeric)) + 1, digits = 2) %>%
       DT::formatStyle(
-        columns = colnames(filtered_data),
+        columns = 1,  # Kode District
         backgroundColor = colors[3],
-        color = colors[9]
+        color = colors[1],
+        fontWeight = "bold"
+      ) %>%
+      DT::formatStyle(
+        columns = c(2, 3),  # Nama kabupaten dan provinsi
+        backgroundColor = colors[3],
+        color = colors[9],
+        fontWeight = "500"
+      ) %>%
+      DT::formatStyle(
+        columns = 4:10,  # Data numerik
+        backgroundColor = "white",
+        color = colors[1]
       )
   })
   
   output$sovi_table_summary <- renderPrint({
-    filtered_data <- sovi_data
+    total_sovi_peta <- nrow(sovi_peta %>% filter(!is.na(POVERTY)))
     
-    if(input$sovi_filter_var != "all") {
-      var_col <- input$sovi_filter_var
-      var_values <- sovi_data[[var_col]]
-      
-      if(!is.null(input$sovi_filter_level) && input$sovi_filter_level != "all_levels") {
-        q1 <- quantile(var_values, 0.25, na.rm = TRUE)
-        q3 <- quantile(var_values, 0.75, na.rm = TRUE)
-        
-        if(input$sovi_filter_level == "high") {
-          filtered_data <- sovi_data[var_values > q3, ]
-        } else if(input$sovi_filter_level == "medium") {
-          filtered_data <- sovi_data[var_values >= q1 & var_values <= q3, ]
-        } else if(input$sovi_filter_level == "low") {
-          filtered_data <- sovi_data[var_values < q1, ]
-        }
-      }
-    }
-    
-    cat("RINGKASAN DATA SOVI\n")
-    cat("===================\n")
-    cat("Total Observasi:", nrow(filtered_data), "\n")
-    cat("Persentase dari Total:", round(nrow(filtered_data)/nrow(sovi_data)*100, 1), "%\n")
+    cat("🗺️ RINGKASAN DATA SOVI PETA\n")
+    cat("============================\n")
+    cat("Total Kabupaten/Kota:", total_sovi_peta, "\n")
+    cat("Provinsi Tercakup:", length(unique(sovi_peta$nmprov[!is.na(sovi_peta$POVERTY)])), "\n")
     
     if(input$sovi_filter_var != "all") {
       cat("Filter Aktif:", input$sovi_filter_var, "\n")
       if(!is.null(input$sovi_filter_level) && input$sovi_filter_level != "all_levels") {
-        cat("Level Filter:", input$sovi_filter_level, "\n")
+        level_desc <- switch(input$sovi_filter_level,
+                             "high" = "Tinggi (> Q3)",
+                             "medium" = "Sedang (Q1-Q3)", 
+                             "low" = "Rendah (< Q1)")
+        cat("Level Filter:", level_desc, "\n")
       }
     }
     
-    cat("\nStatistik Utama:\n")
-    key_vars <- c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH")
-    existing_vars <- key_vars[key_vars %in% names(filtered_data)]
-    if(length(existing_vars) > 0) {
-      summary_stats <- filtered_data[, existing_vars, drop = FALSE]
-      print(summary(summary_stats))
+    cat("\nStatistik Cepat:\n")
+    cat("Rata-rata Kemiskinan:", round(mean(sovi_peta$POVERTY, na.rm = TRUE), 1), "%\n")
+    cat("Rata-rata Pendidikan Rendah:", round(mean(sovi_peta$LOWEDU, na.rm = TRUE), 1), "%\n")
+    cat("Rata-rata Lansia:", round(mean(sovi_peta$ELDERLY, na.rm = TRUE), 1), "%\n")
+    cat("Total Populasi:", format(sum(sovi_peta$POPULATION, na.rm = TRUE), big.mark = ","), "\n")
+    
+    # Top 3 provinces by count
+    prov_count <- table(sovi_peta$nmprov[!is.na(sovi_peta$POVERTY)])
+    top_prov <- head(sort(prov_count, decreasing = TRUE), 3)
+    cat("\nProvinsi dengan Kabupaten/Kota Terbanyak:\n")
+    for(i in 1:length(top_prov)) {
+      cat(paste0(i, ". ", names(top_prov)[i], ": ", top_prov[i], " kab/kota\n"))
     }
   })
   
@@ -2288,62 +2276,159 @@ server <- function(input, output, session) {
     HTML(interpretation)
   })
   
-  # Exploration map
-  # Exploration map
-  # ==========================================================
-  # GANTI DENGAN KODE PETA EKSPLORASI YANG SUDAH DIPERBAIKI INI
-  # ==========================================================
+  # Enhanced Exploration map with multiple types
   output$exploration_map <- renderLeaflet({
-    req(input$map_variable)
+    req(input$map_variable, input$map_type)
     
-    # Gunakan data sovi_peta yang sudah digabung dan valid
+    # Use sovi_peta data with spatial information
     sovi_peta_valid <- sovi_peta %>% filter(!is.na(.data[[input$map_variable]]))
     
-    # Ambil koordinat dari kolom geometri untuk scatter plot & heatmap
+    if(nrow(sovi_peta_valid) == 0) {
+      return(leaflet() %>% addTiles() %>% setView(lng = 118, lat = -2, zoom = 5))
+    }
+    
+    # Get coordinates for point-based maps
     coords <- st_coordinates(st_centroid(sovi_peta_valid$geometry))
     sovi_peta_valid$longitude <- coords[, "X"]
     sovi_peta_valid$latitude <- coords[, "Y"]
     
     var_data <- sovi_peta_valid[[input$map_variable]]
     
+    # Consistent green palette
+    green_pal <- c("#E8F5E8", "#81C784", "#4CAF50", "#2E7D32", "#1B5E20")
+    
     map_base <- leaflet(sovi_peta_valid) %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       setView(lng = 118, lat = -2.5, zoom = 5)
     
-    if (input$map_type == "scatter") {
-      pal <- colorNumeric(
-        palette = colors,
-        domain = var_data
+    # Enhanced hover labels
+    create_hover_label <- function(name, province, value, interpretation) {
+      paste0(
+        "<div style='font-family: Arial; font-size: 13px; max-width: 280px; padding: 8px;'>",
+        "<strong style='color: #2E7D32; font-size: 15px;'>🏛️ ", name, "</strong><br/>",
+        "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", province, "</strong><br/>",
+        "<span style='color: #546E7A;'>📊 ", input$map_variable, ":</span> <strong style='color: #4CAF50;'>", round(value, 2), "</strong><br/>",
+        "<span style='color: #546E7A;'>📈 Interpretasi:</span> <strong>", interpretation, "</strong>",
+        "</div>"
       )
+    }
+    
+    # Calculate interpretations
+    q1 <- quantile(var_data, 0.25, na.rm = TRUE)
+    q3 <- quantile(var_data, 0.75, na.rm = TRUE)
+    interpretations <- ifelse(var_data > q3, "🔴 Tinggi",
+                             ifelse(var_data > q1, "🟡 Sedang", "🟢 Rendah"))
+    
+    if (input$map_type == "choropleth") {
+      # Choropleth map (polygon-based)
+      pal <- colorNumeric(palette = green_pal, domain = var_data)
+      
+      map_base %>%
+        addPolygons(
+          fillColor = ~pal(var_data),
+          weight = 1.5,
+          opacity = 1,
+          color = "white",
+          dashArray = "2",
+          fillOpacity = 0.8,
+          highlightOptions = highlightOptions(
+            weight = 3,
+            color = "#2E7D32",
+            dashArray = "",
+            fillOpacity = 0.9,
+            bringToFront = TRUE
+          ),
+          label = ~lapply(create_hover_label(nmkab, nmprov, var_data, interpretations), HTML),
+          labelOptions = labelOptions(
+            style = list("font-weight" = "normal", padding = "8px 12px", "border-radius" = "8px"),
+            textsize = "13px", direction = "auto"
+          )
+        ) %>%
+        addLegend(pal = pal, values = var_data, opacity = 0.8, 
+                  title = HTML(paste0("<strong style='color: #2E7D32;'>", input$map_variable, "</strong>")),
+                  position = "bottomright")
+      
+    } else if (input$map_type == "scatter") {
+      # Scatter points
+      pal <- colorNumeric(palette = green_pal, domain = var_data)
       
       map_base %>%
         addCircleMarkers(
-          lng = ~longitude,
-          lat = ~latitude,
-          radius = 5,
+          lng = ~longitude, lat = ~latitude,
+          radius = ~sqrt(var_data) * 2 + 3,
           fillColor = ~pal(var_data),
           color = "white",
-          weight = 1,
+          weight = 2,
           opacity = 1,
-          fillOpacity = 0.7,
-          label = ~lapply(paste("<strong>", nmkab, "</strong><br/>",
-                                input$map_variable, ": ", round(var_data, 2)), HTML)
+          fillOpacity = 0.8,
+          label = ~lapply(create_hover_label(nmkab, nmprov, var_data, interpretations), HTML),
+          labelOptions = labelOptions(textsize = "13px", direction = "auto")
         ) %>%
-        addLegend(
-          pal = pal,
-          values = var_data,
-          title = input$map_variable,
-          position = "bottomright"
-        )
-    } else { # heatmap
+        addLegend(pal = pal, values = var_data, opacity = 0.8,
+                  title = HTML(paste0("<strong style='color: #2E7D32;'>", input$map_variable, "</strong>")),
+                  position = "bottomright")
+      
+    } else if (input$map_type == "heatmap") {
+      # Heat map
       map_base %>%
         addHeatmap(
-          lng = ~longitude,
-          lat = ~latitude,
+          lng = ~longitude, lat = ~latitude,
           intensity = var_data,
-          blur = 20,
-          max = 0.05,
-          radius = 15
+          blur = 25, max = 0.8, radius = 20,
+          gradient = list('0' = '#E8F5E8', '0.4' = '#81C784', '0.7' = '#4CAF50', '1' = '#2E7D32')
+        )
+      
+    } else if (input$map_type == "cluster") {
+      # Cluster points
+      map_base %>%
+        addCircleMarkers(
+          lng = ~longitude, lat = ~latitude,
+          radius = 6,
+          fillColor = ~ifelse(var_data > q3, "#2E7D32", ifelse(var_data > q1, "#4CAF50", "#81C784")),
+          color = "white",
+          weight = 2,
+          opacity = 1,
+          fillOpacity = 0.9,
+          clusterOptions = markerClusterOptions(),
+          label = ~lapply(create_hover_label(nmkab, nmprov, var_data, interpretations), HTML)
+        )
+      
+    } else if (input$map_type == "symbols") {
+      # Proportional symbols
+      max_radius <- 15
+      min_radius <- 3
+      radius_vals <- min_radius + (var_data - min(var_data, na.rm = TRUE)) / 
+        (max(var_data, na.rm = TRUE) - min(var_data, na.rm = TRUE)) * (max_radius - min_radius)
+      
+      map_base %>%
+        addCircleMarkers(
+          lng = ~longitude, lat = ~latitude,
+          radius = radius_vals,
+          fillColor = "#4CAF50",
+          color = "#2E7D32",
+          weight = 2,
+          opacity = 1,
+          fillOpacity = 0.7,
+          label = ~lapply(create_hover_label(nmkab, nmprov, var_data, interpretations), HTML)
+        ) %>%
+        addLegend(
+          colors = "#4CAF50", labels = paste("Ukuran = f(", input$map_variable, ")"),
+          title = HTML(paste0("<strong style='color: #2E7D32;'>", input$map_variable, "</strong>")),
+          position = "bottomright"
+        )
+      
+    } else { # contour
+      # Simple contour approximation using circles
+      map_base %>%
+        addCircleMarkers(
+          lng = ~longitude, lat = ~latitude,
+          radius = ~var_data * 0.5,
+          fillColor = "#4CAF50",
+          color = "#2E7D32",
+          weight = 1,
+          opacity = 0.5,
+          fillOpacity = 0.3,
+          label = ~lapply(create_hover_label(nmkab, nmprov, var_data, interpretations), HTML)
         )
     }
   })
@@ -3305,13 +3390,25 @@ server <- function(input, output, session) {
     })
   })
   
-  # Cluster Analysis
+  # Enhanced Provincial Cluster Analysis
   observeEvent(input$run_clustering, {
     req(input$cluster_variables, length(input$cluster_variables) >= 2)
     
-    # Prepare data for clustering
-    cluster_data <- sovi_data[, input$cluster_variables, drop = FALSE]
-    cluster_data <- na.omit(cluster_data)
+    # Prepare province-level aggregated data for clustering
+    province_data <- sovi_peta %>%
+      st_drop_geometry() %>%
+      filter(!is.na(POVERTY)) %>%
+      group_by(nmprov) %>%
+      summarise(
+        across(all_of(input$cluster_variables), ~ mean(.x, na.rm = TRUE)),
+        kabupaten_count = n(),
+        total_population = sum(POPULATION, na.rm = TRUE),
+        .groups = 'drop'
+      ) %>%
+      filter(complete.cases(.))
+    
+    # Extract cluster variables
+    cluster_data <- province_data[, input$cluster_variables, drop = FALSE]
     
     # Scale the data
     cluster_data_scaled <- scale(cluster_data)
@@ -3322,19 +3419,32 @@ server <- function(input, output, session) {
       clusters <- cluster_result$cluster
       
       output$cluster_summary <- renderPrint({
-        cat("K-MEANS CLUSTERING RESULTS\n")
-        cat("==========================\n")
-        cat("Number of clusters:", input$n_clusters, "\n")
+        cat("🏛️ ANALISIS CLUSTER PROVINSI (K-MEANS)\n")
+        cat("=====================================\n")
+        cat("Jumlah Cluster:", input$n_clusters, "\n")
+        cat("Jumlah Provinsi:", nrow(province_data), "\n")
         cat("Total within-cluster sum of squares:", round(cluster_result$tot.withinss, 2), "\n")
         cat("Between-cluster sum of squares:", round(cluster_result$betweenss, 2), "\n")
-        cat("Total sum of squares:", round(cluster_result$totss, 2), "\n")
-        cat("Between SS / Total SS ratio:", round(cluster_result$betweenss/cluster_result$totss * 100, 1), "%\n\n")
+        cat("Variance Explained:", round(cluster_result$betweenss/cluster_result$totss * 100, 1), "%\n\n")
         
-        cat("Cluster sizes:\n")
-        print(table(clusters))
+        cat("📊 Distribusi Cluster:\n")
+        cluster_table <- table(clusters)
+        for(i in 1:length(cluster_table)) {
+          cat(paste0("Cluster ", i, ": ", cluster_table[i], " provinsi\n"))
+        }
         
-        cat("\nCluster centers (scaled):\n")
-        print(round(cluster_result$centers, 3))
+        cat("\n🏛️ Provinsi per Cluster:\n")
+        for(i in 1:input$n_clusters) {
+          prov_in_cluster <- province_data$nmprov[clusters == i]
+          cat(paste0("\nCluster ", i, " (", length(prov_in_cluster), " provinsi):\n"))
+          for(j in 1:length(prov_in_cluster)) {
+            cat(paste0("  ", j, ". ", prov_in_cluster[j], "\n"))
+          }
+        }
+        
+        cat("\n📈 Karakteristik Cluster (rata-rata):\n")
+        cluster_chars <- aggregate(cluster_data, by = list(Cluster = clusters), FUN = mean)
+        print(round(cluster_chars, 2))
       })
       
     } else if(input$cluster_method == "hierarchical") {
@@ -3394,105 +3504,190 @@ server <- function(input, output, session) {
       })
     }
     
-    # Enhanced Cluster visualization with distance clustering
-    output$cluster_plot <- renderPlotly({
-      req(input$cluster_variables, length(input$cluster_variables) >= 2)
+    # Interactive Provincial Cluster Map
+    output$cluster_plot <- renderLeaflet({
+      req(input$cluster_variables, length(input$cluster_variables) >= 2, exists("clusters"))
       
-      # Create plot data with proper variable names
-      plot_data <- data.frame(
-        x_var = cluster_data[, 1],
-        y_var = cluster_data[, 2],
-        Cluster = as.factor(clusters),
-        stringsAsFactors = FALSE
+      # Create cluster data for provinces
+      province_cluster_data <- province_data %>%
+        mutate(Cluster = as.factor(clusters))
+      
+      # Merge with spatial data
+      sovi_cluster_map <- sovi_peta %>%
+        left_join(province_cluster_data %>% select(nmprov, Cluster), by = "nmprov") %>%
+        filter(!is.na(Cluster))
+      
+      if(nrow(sovi_cluster_map) == 0) {
+        return(leaflet() %>% addTiles() %>% setView(lng = 118, lat = -2, zoom = 5))
+      }
+      
+      # Define cluster colors (green theme variations)
+      cluster_colors <- c("#2E7D32", "#4CAF50", "#81C784", "#A5D6A7", "#C8E6C9", 
+                         "#66BB6A", "#26A69A", "#00695C", "#004D40")[1:length(unique(clusters))]
+      
+      pal <- colorFactor(
+        palette = cluster_colors,
+        domain = sovi_cluster_map$Cluster
       )
       
-      # Add distance from cluster center if k-means
-      if(input$cluster_method == "kmeans" && exists("cluster_result")) {
-        centers_scaled <- cluster_result$centers
-        distances <- apply(cluster_data_scaled, 1, function(x) {
-          min(apply(centers_scaled, 1, function(center) sqrt(sum((x - center)^2))))
-        })
-        plot_data$distance_to_center <- distances
-        plot_data$size_var <- 3 + (distances / max(distances)) * 2
-      } else {
-        plot_data$size_var <- 3
-      }
-      
-      p <- ggplot(plot_data, aes(x = x_var, y = y_var, color = Cluster)) +
-        geom_point(size = plot_data$size_var, alpha = 0.7) +
-        scale_color_manual(values = colors[1:length(unique(clusters))]) +
-        labs(
-          title = paste("Distance-Based Cluster Analysis:", input$cluster_variables[1], "vs", input$cluster_variables[2]),
-          subtitle = paste("Method:", tools::toTitleCase(input$cluster_method), "| Clusters:", length(unique(clusters))),
-          x = input$cluster_variables[1], 
-          y = input$cluster_variables[2],
-          caption = "Ukuran titik menunjukkan jarak ke pusat cluster (untuk K-means)"
-        ) +
-        theme_minimal() +
-        theme(
-          plot.title = element_text(size = 14, face = "bold", color = colors[1]),
-          plot.subtitle = element_text(size = 12, color = colors[7]),
-          legend.position = "right"
-        )
-      
-      # Add cluster centers for k-means
-      if(input$cluster_method == "kmeans" && exists("cluster_result")) {
-        centers_df <- data.frame(
-          x_var = cluster_result$centers[, 1],
-          y_var = cluster_result$centers[, 2],
-          Cluster = as.factor(1:nrow(cluster_result$centers))
-        )
+      # Create enhanced hover labels for cluster map
+      create_cluster_label <- function(kab, prov, cluster, poverty, lowedu, elderly) {
+        cluster_desc <- switch(as.character(cluster),
+                              "1" = "Cluster Dinamis",
+                              "2" = "Cluster Berkembang", 
+                              "3" = "Cluster Tradisional",
+                              paste("Cluster", cluster))
         
-        p <- p + geom_point(data = centers_df, aes(x = x_var, y = y_var), 
-                           color = "black", size = 6, shape = 4, stroke = 2)
+        paste0(
+          "<div style='font-family: Arial; font-size: 14px; max-width: 320px; padding: 10px;'>",
+          "<strong style='color: #2E7D32; font-size: 16px;'>🏛️ ", kab, "</strong><br/>",
+          "<span style='color: #546E7A;'>📍 Provinsi:</span> <strong>", prov, "</strong><br/>",
+          "<span style='color: #546E7A;'>🎯 ", cluster_desc, ":</span> <strong style='color: ", cluster_colors[as.numeric(cluster)], ";'>", cluster, "</strong><br/>",
+          "<hr style='margin: 8px 0; border: 1px solid #E0E0E0;'>",
+          "<span style='color: #546E7A;'>💰 Kemiskinan:</span> <strong>", round(poverty, 1), "%</strong><br/>",
+          "<span style='color: #546E7A;'>🎓 Pendidikan Rendah:</span> <strong>", round(lowedu, 1), "%</strong><br/>",
+          "<span style='color: #546E7A;'>👴 Lansia:</span> <strong>", round(elderly, 1), "%</strong>",
+          "</div>"
+        )
       }
       
-      ggplotly(p) %>% 
-        layout(showlegend = TRUE) %>%
-        config(displayModeBar = FALSE)
+      leaflet(sovi_cluster_map) %>%
+        addProviderTiles(providers$CartoDB.Positron) %>%
+        setView(lng = 118, lat = -2, zoom = 5) %>%
+        addPolygons(
+          fillColor = ~pal(Cluster),
+          weight = 2,
+          opacity = 1,
+          color = "white",
+          dashArray = "2",
+          fillOpacity = 0.8,
+          highlightOptions = highlightOptions(
+            weight = 4,
+            color = "#1B5E20",
+            dashArray = "",
+            fillOpacity = 0.9,
+            bringToFront = TRUE
+          ),
+          label = ~lapply(create_cluster_label(nmkab, nmprov, Cluster, POVERTY, LOWEDU, ELDERLY), HTML),
+          labelOptions = labelOptions(
+            style = list("font-weight" = "normal", padding = "10px 15px", "border-radius" = "10px"),
+            textsize = "14px",
+            direction = "auto"
+          )
+        ) %>%
+        addLegend(
+          pal = pal,
+          values = ~Cluster,
+          opacity = 0.9,
+          title = HTML("<strong style='color: #2E7D32; font-size: 16px;'>🎯 Cluster Provinsi</strong>"),
+          position = "bottomright"
+        ) %>%
+        # Add cluster summary popup
+        addControl(
+          html = paste0(
+            "<div style='background: rgba(46, 125, 50, 0.9); color: white; padding: 15px; border-radius: 10px; font-family: Arial;'>",
+            "<h4 style='margin: 0 0 10px 0;'>🏛️ Analisis Cluster Provinsi</h4>",
+            "<p style='margin: 0; font-size: 13px;'>",
+            "<strong>", length(unique(clusters)), " Cluster</strong> | ",
+            "<strong>", nrow(province_data), " Provinsi</strong><br/>",
+            "Metode: ", tools::toTitleCase(input$cluster_method), "<br/>",
+            "Variabel: ", paste(input$cluster_variables, collapse = ", "),
+            "</p></div>"
+          ),
+          position = "topright"
+        )
     })
     
-    # Cluster table
+    # Enhanced Cluster table with province details
     output$cluster_table <- DT::renderDataTable({
-      cluster_summary_table <- cluster_data %>%
-        mutate(Cluster = clusters) %>%
-        group_by(Cluster) %>%
-        summarise_all(list(Mean = ~ round(mean(., na.rm = TRUE), 3)), .groups = 'drop')
+      cluster_detail_table <- province_data %>%
+        mutate(Cluster = paste0("Cluster ", clusters)) %>%
+        select(
+          `Provinsi` = nmprov,
+          `Cluster` = Cluster,
+          `Jumlah Kab/Kota` = kabupaten_count,
+          `Total Populasi` = total_population,
+          everything(),
+          -kabupaten_count, -total_population
+        ) %>%
+        arrange(Cluster, Provinsi)
+      
+      # Format numbers
+      numeric_cols <- sapply(cluster_detail_table, is.numeric)
+      cluster_detail_table[numeric_cols] <- lapply(cluster_detail_table[numeric_cols], function(x) round(x, 2))
       
       DT::datatable(
-        cluster_summary_table,
-        options = list(pageLength = 10, scrollX = TRUE),
-        caption = "Ringkasan Statistik per Cluster"
-      )
+        cluster_detail_table,
+        options = list(
+          pageLength = 15, 
+          scrollX = TRUE,
+          columnDefs = list(
+            list(targets = c(0, 1), className = "dt-left"),
+            list(targets = "_all", className = "dt-center")
+          )
+        ),
+        caption = "🏛️ Detail Cluster Provinsi - Analisis SOVI",
+        filter = 'top',
+        rownames = FALSE
+      ) %>%
+        DT::formatStyle(
+          columns = "Cluster",
+          backgroundColor = colors[3],
+          color = colors[1],
+          fontWeight = "bold"
+        ) %>%
+        DT::formatStyle(
+          columns = "Provinsi",
+          backgroundColor = "white",
+          color = colors[9],
+          fontWeight = "500"
+        ) %>%
+        DT::formatRound(columns = which(sapply(cluster_detail_table, is.numeric)), digits = 1)
     })
     
-    # Cluster interpretation
+    # Enhanced Cluster interpretation with provincial focus
     output$cluster_interpretation <- renderUI({
       n_clusters <- length(unique(clusters))
       cluster_sizes <- table(clusters)
       largest_cluster <- which.max(cluster_sizes)
       smallest_cluster <- which.min(cluster_sizes)
+      total_provinces <- nrow(province_data)
       
       method_desc <- switch(input$cluster_method,
-                            "kmeans" = "K-Means menggunakan algoritma centroid-based clustering",
-                            "hierarchical" = "Hierarchical clustering menggunakan pendekatan agglomerative",
-                            "pam" = "PAM (Partitioning Around Medoids) menggunakan medoid-based clustering")
+                            "kmeans" = "K-Means clustering provinsi menggunakan algoritma centroid-based",
+                            "hierarchical" = "Hierarchical clustering provinsi menggunakan pendekatan agglomerative",
+                            "pam" = "PAM clustering provinsi menggunakan medoid-based approach")
+      
+      # Calculate cluster characteristics
+      cluster_chars <- aggregate(cluster_data, by = list(Cluster = clusters), FUN = mean)
+      variance_explained <- if(exists("cluster_result") && input$cluster_method == "kmeans") {
+        round(cluster_result$betweenss/cluster_result$totss * 100, 1)
+      } else "N/A"
       
       interpretation <- paste0(
-        "<strong>Hasil Analisis Cluster SOVI:</strong><br><br>",
+        "<strong>🏛️ Hasil Analisis Cluster Provinsi SOVI:</strong><br><br>",
         
-        method_desc, " menghasilkan ", n_clusters, " cluster dengan karakteristik yang berbeda. ",
-        "Cluster terbesar (Cluster ", largest_cluster, ") memiliki ", max(cluster_sizes), " observasi, ",
-        "sedangkan cluster terkecil (Cluster ", smallest_cluster, ") memiliki ", min(cluster_sizes), " observasi.<br><br>",
+        method_desc, " berhasil mengelompokkan <strong>", total_provinces, " provinsi</strong> menjadi <strong>", n_clusters, " cluster</strong> ",
+        "berdasarkan karakteristik kerentanan sosial. ",
+        if(variance_explained != "N/A") paste0("Model menjelaskan <strong>", variance_explained, "%</strong> variasi data. ") else "",
+        "<br><br>",
         
-        "<strong>Interpretasi Metodologis:</strong><br>",
-        "• Variabel yang digunakan: ", paste(input$cluster_variables, collapse = ", "), "<br>",
-        "• Metode standardisasi: Z-score standardization untuk menghindari bias skala<br>",
-        if(input$cluster_method == "hierarchical") "• Distance matrix: Menggunakan matriks jarak sesuai ketentuan<br>" else "",
-        "• Hasil clustering dapat digunakan untuk segmentasi wilayah berdasarkan kerentanan sosial<br><br>",
+        "<strong>📊 Distribusi Cluster:</strong><br>",
+        "• Cluster terbesar: <strong>Cluster ", largest_cluster, "</strong> (", max(cluster_sizes), " provinsi)<br>",
+        "• Cluster terkecil: <strong>Cluster ", smallest_cluster, "</strong> (", min(cluster_sizes), " provinsi)<br>",
+        "• Rata-rata provinsi per cluster: ", round(total_provinces/n_clusters, 1), " provinsi<br><br>",
         
-        "Analisis ini memungkinkan identifikasi pola kerentanan sosial yang dapat membantu dalam perumusan kebijakan regional. ",
-        "Setiap cluster merepresentasikan wilayah dengan karakteristik SOVI yang serupa dan dapat menjadi dasar untuk intervensi targeted sesuai dengan metodologi yang dipelajari di STIS."
+        "<strong>🎯 Interpretasi Kebijakan:</strong><br>",
+        "• <strong>Variabel Analisis:</strong> ", paste(input$cluster_variables, collapse = ", "), "<br>",
+        "• <strong>Unit Analisis:</strong> Provinsi (agregasi kabupaten/kota)<br>",
+        "• <strong>Peta Interaktif:</strong> Menampilkan cluster spasial dengan hover detail<br>",
+        "• <strong>Aplikasi:</strong> Perencanaan pembangunan dan alokasi sumber daya regional<br><br>",
+        
+        "<strong>💡 Insights Strategis:</strong><br>",
+        "Setiap cluster merepresentasikan provinsi dengan pola kerentanan sosial yang serupa, memungkinkan: ",
+        "(1) strategi intervensi yang tepat sasaran, (2) benchmarking antar provinsi dalam cluster yang sama, ",
+        "dan (3) identifikasi best practices dari cluster dengan performa terbaik. ",
+        "Analisis ini mendukung evidence-based policy making sesuai dengan standar metodologi STIS."
       )
       
       HTML(interpretation)
