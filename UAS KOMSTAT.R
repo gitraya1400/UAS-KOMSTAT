@@ -202,18 +202,32 @@ create_download_panel <- function(tab_name, show_conditions = NULL) {
       div(
         style = "text-align: center;",
         downloadButton(
-          outputId = paste0("download_", tab_name, "_pdf"),
-          label = HTML('<i class="fa fa-file-pdf-o" style="margin-right: 8px;"></i>📄 PDF Lengkap'),
+          outputId = paste0("download_", tab_name, "_jpg"),
+          label = HTML('<i class="fa fa-image" style="margin-right: 8px;"></i>🖼️ JPG Images'),
           class = "download-btn",
-          style = "width: 48%; margin: 1%;",
-          title = "Download laporan lengkap dalam format PDF dengan semua grafik dan analisis"
+          style = "width: 23%; margin: 1%;",
+          title = "Download semua gambar/plot dari halaman ini dalam format JPG"
         ),
         downloadButton(
           outputId = paste0("download_", tab_name, "_word"),
           label = HTML('<i class="fa fa-file-word-o" style="margin-right: 8px;"></i>📝 Word Report'),
           class = "download-btn",
-          style = "width: 48%; margin: 1%;",
+          style = "width: 23%; margin: 1%;",
           title = "Download hasil analisis dalam format Word untuk editing lebih lanjut"
+        ),
+        downloadButton(
+          outputId = paste0("download_", tab_name, "_pdf"),
+          label = HTML('<i class="fa fa-file-pdf-o" style="margin-right: 8px;"></i>📄 PDF Lengkap'),
+          class = "download-btn",
+          style = "width: 23%; margin: 1%;",
+          title = "Download laporan lengkap dalam format PDF dengan semua grafik dan analisis"
+        ),
+        downloadButton(
+          outputId = paste0("download_", tab_name, "_zip"),
+          label = HTML('<i class="fa fa-archive" style="margin-right: 8px;"></i>🗜️ ZIP All'),
+          class = "download-btn",
+          style = "width: 23%; margin: 1%;",
+          title = "Download semua format (JPG, Word, PDF) dalam satu file ZIP"
         )
       )
     )
@@ -1147,6 +1161,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk Uji Rata-rata (Conditional)
+        fluidRow(
+          column(12, create_download_panel("uji_rata", c("input.run_onesample > 0", "input.run_twosample > 0")))
         )
       ),
       
@@ -1251,6 +1270,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk Uji Proporsi (Conditional)
+        fluidRow(
+          column(12, create_download_panel("uji_proporsi", c("input.run_proportion > 0", "input.run_variance > 0")))
         )
       ),
       
@@ -1361,6 +1385,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk ANOVA (Conditional)
+        fluidRow(
+          column(12, create_download_panel("anova", c("input.run_anova > 0", "input.run_anova2 > 0")))
         )
       ),
       
@@ -3862,24 +3891,39 @@ server <- function(input, output, session) {
   generate_download_handler <- function(tab_name, format_type) {
     downloadHandler(
       filename = function() {
-        current_tab <- switch(tab_name,
-                              "beranda" = "Beranda",
-                              "manajemen" = "ManajemenData", 
-                              "eksplorasi" = "EksplorasiData",
-                              "asumsi" = "UjiAsumsi",
-                              "inferensia" = "StatistikInferensia",
-                              "regresi" = "RegresiLinear")
+        # Deteksi current tab yang aktif dari input$sidebar jika ada sub-tab
+        current_active_tab <- if(input$sidebar %in% c("uji_rata", "uji_proporsi", "anova")) {
+          switch(input$sidebar,
+                 "uji_rata" = "UjiRataRata",
+                 "uji_proporsi" = "UjiProporsi", 
+                 "anova" = "ANOVA")
+        } else {
+          switch(tab_name,
+                 "beranda" = "Beranda",
+                 "manajemen" = "ManajemenData", 
+                 "eksplorasi" = "EksplorasiData",
+                 "asumsi" = "UjiAsumsi",
+                 "inferensia" = "StatistikInferensia",
+                 "regresi" = "RegresiLinear",
+                 "uji_rata" = "UjiRataRata",
+                 "uji_proporsi" = "UjiProporsi",
+                 "anova" = "ANOVA")
+        }
         
-                 # Format-specific filename logic
-         timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
-         
-         if(format_type == "pdf") {
-           paste0("SOVI_", current_tab, "_Lengkap_", timestamp, ".pdf")
-         } else if(format_type == "word") {
-           paste0("SOVI_", current_tab, "_Laporan_", timestamp, ".docx")
-         } else {
-           paste0("SOVI_", current_tab, "_", timestamp, ".", format_type)
-         }
+        # Format-specific filename logic
+        timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
+        
+        if(format_type == "jpg") {
+          paste0("SOVI_", current_active_tab, "_Gambar_", timestamp, ".zip")  # Multiple JPGs in ZIP
+        } else if(format_type == "word") {
+          paste0("SOVI_", current_active_tab, "_Laporan_", timestamp, ".docx")
+        } else if(format_type == "pdf") {
+          paste0("SOVI_", current_active_tab, "_Lengkap_", timestamp, ".pdf")
+        } else if(format_type == "zip") {
+          paste0("SOVI_", current_active_tab, "_SemuaFormat_", timestamp, ".zip")
+        } else {
+          paste0("SOVI_", current_active_tab, "_", timestamp, ".", format_type)
+        }
       },
       content = function(file) {
         temp_dir <- tempdir()
@@ -4035,6 +4079,90 @@ server <- function(input, output, session) {
           }
           
           plots_created <- list("uji_t_visual" = p1, "anova_visual" = p2)
+          
+        } else if(tab_name == "uji_rata") {
+          # Plot 1: One-sample t-test visualization
+          sample_mean <- mean(sovi_data$POVERTY, na.rm = TRUE)
+          
+          p1 <- ggplot(sovi_data, aes(x = POVERTY)) +
+            geom_histogram(bins = 30, fill = colors[1], alpha = 0.7, color = "white") +
+            geom_vline(xintercept = sample_mean, color = colors[2], size = 1, linetype = "dashed") +
+            geom_vline(xintercept = 15, color = colors[7], size = 1, linetype = "solid") +
+            labs(title = "Uji t Satu Sampel: Distribusi POVERTY", x = "POVERTY", y = "Frekuensi",
+                 subtitle = "Garis merah = Rata-rata sampel, Garis biru = Nilai hipotesis") +
+            theme_minimal()
+          
+          # Plot 2: Two-sample comparison
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            p2 <- ggplot(clean_data, aes(x = Economic_Status, y = POVERTY, fill = Economic_Status)) +
+              geom_boxplot(alpha = 0.7) +
+              scale_fill_manual(values = colors[1:3]) +
+              labs(title = "Uji t Dua Sampel: POVERTY by Economic Status", x = "Economic Status", y = "POVERTY") +
+              theme_minimal() + theme(legend.position = "none")
+          } else {
+            p2 <- p1 # Fallback to same plot
+          }
+          
+          plots_created <- list("uji_t_satu_sampel" = p1, "uji_t_dua_sampel" = p2)
+          
+        } else if(tab_name == "uji_proporsi") {
+          # Plot 1: Proportion test visualization
+          if("Economic_Status" %in% names(sovi_data)) {
+            prop_data <- sovi_data %>% 
+              filter(!is.na(Economic_Status)) %>%
+              count(Economic_Status) %>%
+              mutate(prop = n/sum(n))
+            
+            p1 <- ggplot(prop_data, aes(x = Economic_Status, y = prop, fill = Economic_Status)) +
+              geom_bar(stat = "identity", alpha = 0.7) +
+              geom_hline(yintercept = 0.5, color = colors[7], linetype = "dashed") +
+              scale_fill_manual(values = colors[1:3]) +
+              labs(title = "Uji Proporsi: Distribusi Economic Status", x = "Economic Status", y = "Proporsi") +
+              theme_minimal() + theme(legend.position = "none")
+          } else {
+            p1 <- ggplot(sovi_data, aes(x = POVERTY)) +
+              geom_histogram(bins = 20, fill = colors[1], alpha = 0.7) +
+              labs(title = "Distribusi POVERTY untuk Uji Proporsi") +
+              theme_minimal()
+          }
+          
+          # Plot 2: Variance test visualization
+          p2 <- ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) +
+            geom_point(color = colors[1], alpha = 0.6) +
+            stat_ellipse(color = colors[2], size = 1) +
+            labs(title = "Uji Varians: Scatter Plot dengan Confidence Ellipse", x = "POVERTY", y = "LOWEDU") +
+            theme_minimal()
+          
+          plots_created <- list("uji_proporsi" = p1, "uji_varians" = p2)
+          
+        } else if(tab_name == "anova") {
+          # Plot 1: ANOVA visualization
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            group_means <- clean_data %>% group_by(Economic_Status) %>% summarise(Mean_Poverty = mean(POVERTY, na.rm = TRUE))
+            
+            p1 <- ggplot(clean_data, aes(x = Economic_Status, y = POVERTY, fill = Economic_Status)) +
+              geom_boxplot(alpha = 0.7) +
+              stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+              scale_fill_manual(values = colors[1:3]) +
+              labs(title = "ANOVA: POVERTY by Economic Status", x = "Economic Status", y = "POVERTY") +
+              theme_minimal() + theme(legend.position = "none")
+              
+            p2 <- ggplot(group_means, aes(x = Economic_Status, y = Mean_Poverty, fill = Economic_Status)) +
+              geom_bar(stat = "identity", alpha = 0.7) +
+              scale_fill_manual(values = colors[1:3]) +
+              labs(title = "ANOVA: Rata-rata POVERTY per Economic Status", x = "Economic Status", y = "Mean POVERTY") +
+              theme_minimal() + theme(legend.position = "none")
+          } else {
+            p1 <- ggplot(sovi_data, aes(x = POVERTY)) +
+              geom_histogram(bins = 20, fill = colors[1], alpha = 0.7) +
+              labs(title = "Distribusi POVERTY untuk ANOVA") +
+              theme_minimal()
+            p2 <- p1
+          }
+          
+          plots_created <- list("anova_boxplot" = p1, "anova_means" = p2)
           
         } else if(tab_name == "regresi") {
           # Plot 1: Scatter with regression line
@@ -4192,6 +4320,178 @@ server <- function(input, output, session) {
                                  "Uji normalitas dan homogenitas memberikan panduan untuk memilih uji parametrik atau non-parametrik. ",
                                  "Hasil ini akan mempengaruhi validitas kesimpulan statistik yang diambil."
           )
+        } else if(tab_name == "uji_rata") {
+          # T-test content
+          t_test_result <- tryCatch({
+            t.test(sovi_data$POVERTY, mu = 15)
+          }, error = function(e) list(statistic = NA, p.value = NA, conf.int = c(NA, NA)))
+          
+          text_content <- paste0(
+            "LAPORAN UJI RATA-RATA\n",
+            "====================\n\n",
+            "Uji t Satu Sampel:\n",
+            "- Variable: POVERTY\n",
+            "- Hipotesis H0: μ = 15\n",
+            "- Hipotesis H1: μ ≠ 15\n",
+            "- t-statistic: ", if(!is.na(t_test_result$statistic)) round(t_test_result$statistic, 4) else "N/A", "\n",
+            "- P-value: ", if(!is.na(t_test_result$p.value)) round(t_test_result$p.value, 4) else "N/A", "\n",
+            "- Confidence Interval (95%): [", if(!is.na(t_test_result$conf.int[1])) round(t_test_result$conf.int[1], 3) else "N/A", 
+            ", ", if(!is.na(t_test_result$conf.int[2])) round(t_test_result$conf.int[2], 3) else "N/A", "]\n",
+            "- Kesimpulan: ", if(!is.na(t_test_result$p.value)) {
+              if(t_test_result$p.value < 0.05) "Tolak H0: rata-rata POVERTY berbeda dari 15" else "Gagal tolak H0: rata-rata POVERTY tidak berbeda dari 15"
+            } else "Tidak dapat dihitung", "\n\n"
+          )
+          
+          # Two-sample t-test if applicable
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            if(length(unique(clean_data$Economic_Status)) >= 2) {
+              groups <- unique(clean_data$Economic_Status)[1:2]
+              group1_data <- clean_data %>% filter(Economic_Status == groups[1]) %>% pull(POVERTY)
+              group2_data <- clean_data %>% filter(Economic_Status == groups[2]) %>% pull(POVERTY)
+              
+              two_sample_result <- tryCatch({
+                t.test(group1_data, group2_data)
+              }, error = function(e) list(statistic = NA, p.value = NA, conf.int = c(NA, NA)))
+              
+              text_content <- paste0(text_content,
+                                     "Uji t Dua Sampel:\n",
+                                     "- Kelompok 1: ", groups[1], " (n=", length(group1_data), ")\n",
+                                     "- Kelompok 2: ", groups[2], " (n=", length(group2_data), ")\n",
+                                     "- t-statistic: ", if(!is.na(two_sample_result$statistic)) round(two_sample_result$statistic, 4) else "N/A", "\n",
+                                     "- P-value: ", if(!is.na(two_sample_result$p.value)) round(two_sample_result$p.value, 4) else "N/A", "\n",
+                                     "- Kesimpulan: ", if(!is.na(two_sample_result$p.value)) {
+                                       if(two_sample_result$p.value < 0.05) "Terdapat perbedaan signifikan antar kelompok" else "Tidak ada perbedaan signifikan antar kelompok"
+                                     } else "Tidak dapat dihitung", "\n\n"
+              )
+            }
+          }
+          
+          text_content <- paste0(text_content,
+                                 "Interpretasi:\n",
+                                 "Uji t digunakan untuk menguji hipotesis tentang rata-rata populasi. ",
+                                 "Uji satu sampel membandingkan rata-rata sampel dengan nilai hipotesis tertentu, ",
+                                 "sedangkan uji dua sampel membandingkan rata-rata antar kelompok. ",
+                                 "Hasil ini penting untuk pengambilan keputusan statistik dalam penelitian."
+          )
+        } else if(tab_name == "uji_proporsi") {
+          # Proportion test content
+          if("Economic_Status" %in% names(sovi_data)) {
+            prop_data <- sovi_data %>% 
+              filter(!is.na(Economic_Status)) %>%
+              count(Economic_Status) %>%
+              mutate(prop = n/sum(n))
+            
+            # Test if first category proportion = 0.5
+            if(nrow(prop_data) > 0) {
+              prop_test_result <- tryCatch({
+                prop.test(prop_data$n[1], sum(prop_data$n), p = 0.5)
+              }, error = function(e) list(statistic = NA, p.value = NA, conf.int = c(NA, NA)))
+              
+              text_content <- paste0(
+                "LAPORAN UJI PROPORSI & VARIANS\n",
+                "==============================\n\n",
+                "Uji Proporsi:\n",
+                "- Variable: Economic_Status\n",
+                "- Kategori yang diuji: ", prop_data$Economic_Status[1], "\n",
+                "- Proporsi sampel: ", round(prop_data$prop[1], 4), "\n",
+                "- Hipotesis H0: p = 0.5\n",
+                "- Chi-square statistic: ", if(!is.na(prop_test_result$statistic)) round(prop_test_result$statistic, 4) else "N/A", "\n",
+                "- P-value: ", if(!is.na(prop_test_result$p.value)) round(prop_test_result$p.value, 4) else "N/A", "\n",
+                "- Kesimpulan: ", if(!is.na(prop_test_result$p.value)) {
+                  if(prop_test_result$p.value < 0.05) "Tolak H0: proporsi berbeda dari 0.5" else "Gagal tolak H0: proporsi tidak berbeda dari 0.5"
+                } else "Tidak dapat dihitung", "\n\n"
+              )
+            } else {
+              text_content <- "LAPORAN UJI PROPORSI & VARIANS\n==============================\n\nTidak cukup data untuk uji proporsi.\n\n"
+            }
+          } else {
+            text_content <- "LAPORAN UJI PROPORSI & VARIANS\n==============================\n\nVariabel kategorik tidak tersedia untuk uji proporsi.\n\n"
+          }
+          
+          # Variance test
+          var_test_result <- tryCatch({
+            var.test(sovi_data$POVERTY, sovi_data$LOWEDU)
+          }, error = function(e) list(statistic = NA, p.value = NA, conf.int = c(NA, NA)))
+          
+          text_content <- paste0(text_content,
+                                 "Uji Varians (F-test):\n",
+                                 "- Variable 1: POVERTY\n",
+                                 "- Variable 2: LOWEDU\n",
+                                 "- F-statistic: ", if(!is.na(var_test_result$statistic)) round(var_test_result$statistic, 4) else "N/A", "\n",
+                                 "- P-value: ", if(!is.na(var_test_result$p.value)) round(var_test_result$p.value, 4) else "N/A", "\n",
+                                 "- Kesimpulan: ", if(!is.na(var_test_result$p.value)) {
+                                   if(var_test_result$p.value < 0.05) "Varians berbeda signifikan" else "Varians tidak berbeda signifikan"
+                                 } else "Tidak dapat dihitung", "\n\n"
+          )
+          
+          text_content <- paste0(text_content,
+                                 "Interpretasi:\n",
+                                 "Uji proporsi menguji apakah proporsi populasi sama dengan nilai tertentu. ",
+                                 "Uji varians membandingkan variabilitas antar variabel atau kelompok. ",
+                                 "Kedua uji ini penting untuk memvalidasi asumsi dalam analisis statistik lanjutan."
+          )
+        } else if(tab_name == "anova") {
+          # ANOVA content
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            if(nrow(clean_data) > 0 && length(unique(clean_data$Economic_Status)) >= 2) {
+              anova_result <- tryCatch({
+                anova_model <- aov(POVERTY ~ Economic_Status, data = clean_data)
+                summary(anova_model)
+              }, error = function(e) NULL)
+              
+              if(!is.null(anova_result)) {
+                text_content <- paste0(
+                  "LAPORAN ANALYSIS OF VARIANCE (ANOVA)\n",
+                  "===================================\n\n",
+                  "ANOVA Satu Arah:\n",
+                  "- Variable Dependen: POVERTY\n",
+                  "- Variable Independen: Economic_Status\n",
+                  "- Jumlah Kelompok: ", length(unique(clean_data$Economic_Status)), "\n",
+                  "- Total Observasi: ", nrow(clean_data), "\n",
+                  "- F-statistic: ", round(anova_result[[1]]$`F value`[1], 4), "\n",
+                  "- P-value: ", round(anova_result[[1]]$`Pr(>F)`[1], 4), "\n",
+                  "- Kesimpulan: ", if(anova_result[[1]]$`Pr(>F)`[1] < 0.05) {
+                    "Terdapat perbedaan signifikan antar kelompok Economic_Status"
+                  } else {
+                    "Tidak ada perbedaan signifikan antar kelompok Economic_Status"
+                  }, "\n\n"
+                )
+                
+                # Group statistics
+                group_stats <- clean_data %>% 
+                  group_by(Economic_Status) %>% 
+                  summarise(
+                    n = n(),
+                    mean = round(mean(POVERTY, na.rm = TRUE), 3),
+                    sd = round(sd(POVERTY, na.rm = TRUE), 3),
+                    .groups = 'drop'
+                  )
+                
+                text_content <- paste0(text_content, "Statistik Kelompok:\n")
+                for(i in 1:nrow(group_stats)) {
+                  text_content <- paste0(text_content, 
+                                         "- ", group_stats$Economic_Status[i], ": n=", group_stats$n[i], 
+                                         ", mean=", group_stats$mean[i], ", sd=", group_stats$sd[i], "\n")
+                }
+              } else {
+                text_content <- "LAPORAN ANALYSIS OF VARIANCE (ANOVA)\n===================================\n\nError dalam perhitungan ANOVA.\n"
+              }
+            } else {
+              text_content <- "LAPORAN ANALYSIS OF VARIANCE (ANOVA)\n===================================\n\nTidak cukup data untuk ANOVA.\n"
+            }
+          } else {
+            text_content <- "LAPORAN ANALYSIS OF VARIANCE (ANOVA)\n===================================\n\nVariabel pengelompokan tidak tersedia.\n"
+          }
+          
+          text_content <- paste0(text_content, "\n",
+                                 "Interpretasi:\n",
+                                 "ANOVA digunakan untuk menguji perbedaan rata-rata antar tiga atau lebih kelompok. ",
+                                 "Jika hasil signifikan, dapat dilanjutkan dengan uji post-hoc untuk mengetahui ",
+                                 "kelompok mana yang berbeda secara spesifik. Analisis ini penting untuk memahami ",
+                                 "variasi antar kategori dalam penelitian kerentanan sosial."
+          )
         } else if(tab_name == "inferensia") {
           # T-test one sample
           t_test_result <- tryCatch({
@@ -4321,10 +4621,79 @@ server <- function(input, output, session) {
            return()
          }
         
-                          # ===============================================
-         # 5. HANDLE FORMAT PDF - COMPREHENSIVE PDF WITH ALL CONTENT
          # ===============================================
-         if (format_type == "pdf") {
+         # 4. HANDLE JPG FORMAT - SAVE ALL PLOTS AS INDIVIDUAL JPGS AND ZIP THEM
+         # ===============================================
+         if (format_type == "jpg") {
+           jpg_files <- c()
+           
+           # Save each plot as JPG
+           for(plot_name in names(plots_created)) {
+             jpg_file <- file.path(temp_dir, paste0(plot_name, ".jpg"))
+             ggsave(jpg_file, plots_created[[plot_name]], width = 10, height = 8, dpi = 300)
+             jpg_files <- c(jpg_files, jpg_file)
+           }
+           
+           # Create a ZIP of all JPG files
+           if(length(jpg_files) > 0) {
+             zip_file <- file.path(temp_dir, "images.zip")
+             zip::zip(zip_file, files = basename(jpg_files), root = temp_dir)
+             file.copy(zip_file, file)
+           } else {
+             # If no plots, create empty file
+             writeLines("No plots available for this tab.", file)
+           }
+           
+         # ===============================================
+         # 5. HANDLE WORD FORMAT - CREATE PROPER DOCX FILE
+         # ===============================================
+         } else if (format_type == "word") {
+           # Create proper RTF content that can be opened by Word
+           rtf_header <- "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}{\\f1 Arial;}}\\f0\\fs24"
+           rtf_content <- paste0(rtf_header, "\n")
+           
+           # Add title
+           rtf_content <- paste0(rtf_content, 
+                                 "{\\b\\fs28 DAVIRA - Laporan Analisis ", tools::toTitleCase(tab_name), "}\\par\\par\n")
+           
+           # Add metadata
+           rtf_content <- paste0(rtf_content,
+                                 "{\\b Tanggal:} ", format(Sys.time(), "%Y-%m-%d %H:%M"), "\\par\n",
+                                 "{\\b Dataset:} Social Vulnerability Index\\par\n",
+                                 "{\\b Total Observasi:} ", nrow(sovi_data), "\\par\n",
+                                 "{\\b Total Variabel:} ", ncol(sovi_data), "\\par\\par\n")
+           
+           # Add text content with proper RTF formatting
+           text_lines <- strsplit(text_content, "\n")[[1]]
+           for(line in text_lines) {
+             if(nchar(line) > 0) {
+               # Convert special characters for RTF
+               line <- gsub("&", "\\\\&", line)
+               line <- gsub("%", "\\\\%", line)
+               rtf_content <- paste0(rtf_content, line, "\\par\n")
+             } else {
+               rtf_content <- paste0(rtf_content, "\\par\n")
+             }
+           }
+           
+           # Add plots information
+           if(length(plots_created) > 0) {
+             rtf_content <- paste0(rtf_content, "\\par\\par{\\b Grafik yang Dihasilkan:}\\par\n")
+             for(plot_name in names(plots_created)) {
+               rtf_content <- paste0(rtf_content, "- ", gsub("_", " ", tools::toTitleCase(plot_name)), "\\par\n")
+             }
+           }
+           
+           # Close RTF
+           rtf_content <- paste0(rtf_content, "}")
+           
+           # Write RTF content
+           writeLines(rtf_content, file, useBytes = TRUE)
+           
+         # ===============================================
+         # 6. HANDLE FORMAT PDF - COMPREHENSIVE PDF WITH ALL CONTENT
+         # ===============================================
+         } else if (format_type == "pdf") {
            tryCatch({
              pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
              pdf(pdf_file, width = 11, height = 8.5)
@@ -4401,35 +4770,129 @@ server <- function(input, output, session) {
              dev.off()
              return()
            })
+           
+         # ===============================================
+         # 7. HANDLE ZIP FORMAT - COMBINE ALL FORMATS
+         # ===============================================
+         } else if (format_type == "zip") {
+           files_to_zip <- c()
+           
+           # Generate JPG files
+           jpg_files <- c()
+           for(plot_name in names(plots_created)) {
+             jpg_file <- file.path(temp_dir, paste0(plot_name, ".jpg"))
+             ggsave(jpg_file, plots_created[[plot_name]], width = 10, height = 8, dpi = 300)
+             jpg_files <- c(jpg_files, jpg_file)
+             files_to_zip <- c(files_to_zip, jpg_file)
+           }
+           
+           # Generate Word file
+           word_file <- file.path(temp_dir, paste0("laporan_", tab_name, ".docx"))
+           rtf_header <- "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}}\\f0\\fs24"
+           rtf_content <- paste0(rtf_header, "\n{\\b\\fs28 DAVIRA - Laporan Analisis ", tools::toTitleCase(tab_name), "}\\par\\par\n")
+           rtf_content <- paste0(rtf_content,
+                                 "{\\b Tanggal:} ", format(Sys.time(), "%Y-%m-%d %H:%M"), "\\par\n",
+                                 "{\\b Dataset:} Social Vulnerability Index\\par\\par\n")
+           text_lines <- strsplit(text_content, "\n")[[1]]
+           for(line in text_lines) {
+             if(nchar(line) > 0) {
+               line <- gsub("&", "\\\\&", line)
+               line <- gsub("%", "\\\\%", line)
+               rtf_content <- paste0(rtf_content, line, "\\par\n")
+             }
+           }
+           rtf_content <- paste0(rtf_content, "}")
+           writeLines(rtf_content, word_file, useBytes = TRUE)
+           files_to_zip <- c(files_to_zip, word_file)
+           
+           # Generate PDF file
+           pdf_file <- file.path(temp_dir, paste0("laporan_lengkap_", tab_name, ".pdf"))
+           tryCatch({
+             pdf(pdf_file, width = 11, height = 8.5)
+             
+             # Title page
+             plot.new()
+             text(0.5, 0.9, "DAVIRA - SOVI Analytics Hub", cex = 2.2, font = 2, col = "#1A237E")
+             text(0.5, 0.8, paste("Laporan Lengkap Analisis", tools::toTitleCase(tab_name)), cex = 1.6, font = 2)
+             text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1.1)
+             
+             # Add plots
+             for(plot_name in names(plots_created)) {
+               plot.new()
+               text(0.5, 0.95, paste("Grafik:", gsub("_", " ", tools::toTitleCase(plot_name))), cex = 1.4, font = 2)
+               print(plots_created[[plot_name]])
+             }
+             
+             dev.off()
+             files_to_zip <- c(files_to_zip, pdf_file)
+           }, error = function(e) {
+             # Skip PDF if error
+           })
+           
+           # Create final ZIP
+           if(length(files_to_zip) > 0) {
+             final_zip <- file.path(temp_dir, "complete_report.zip")
+             zip::zip(final_zip, files = basename(files_to_zip), root = temp_dir)
+             file.copy(final_zip, file)
+           } else {
+             writeLines("No files generated for ZIP.", file)
+           }
          }
-        
-                 
       }
     )
   }
   
         # ===============================================
-   # DOWNLOAD HANDLERS - SIMPLIFIED VERSION
+   # DOWNLOAD HANDLERS - ALL FORMATS FOR ALL TABS
    # ===============================================
    
-   # Direct download handlers
-   output$download_beranda_pdf <- generate_download_handler("beranda", "pdf") 
+   # Beranda Tab Downloads
+   output$download_beranda_jpg <- generate_download_handler("beranda", "jpg")
    output$download_beranda_word <- generate_download_handler("beranda", "word")
+   output$download_beranda_pdf <- generate_download_handler("beranda", "pdf") 
+   output$download_beranda_zip <- generate_download_handler("beranda", "zip")
    
-   output$download_manajemen_pdf <- generate_download_handler("manajemen", "pdf")
+   # Manajemen Tab Downloads
+   output$download_manajemen_jpg <- generate_download_handler("manajemen", "jpg")
    output$download_manajemen_word <- generate_download_handler("manajemen", "word")
+   output$download_manajemen_pdf <- generate_download_handler("manajemen", "pdf")
+   output$download_manajemen_zip <- generate_download_handler("manajemen", "zip")
    
-   output$download_eksplorasi_pdf <- generate_download_handler("eksplorasi", "pdf")
+   # Eksplorasi Tab Downloads
+   output$download_eksplorasi_jpg <- generate_download_handler("eksplorasi", "jpg")
    output$download_eksplorasi_word <- generate_download_handler("eksplorasi", "word")
+   output$download_eksplorasi_pdf <- generate_download_handler("eksplorasi", "pdf")
+   output$download_eksplorasi_zip <- generate_download_handler("eksplorasi", "zip")
    
-   output$download_asumsi_pdf <- generate_download_handler("asumsi", "pdf")
+   # Asumsi Tab Downloads
+   output$download_asumsi_jpg <- generate_download_handler("asumsi", "jpg")
    output$download_asumsi_word <- generate_download_handler("asumsi", "word")
+   output$download_asumsi_pdf <- generate_download_handler("asumsi", "pdf")
+   output$download_asumsi_zip <- generate_download_handler("asumsi", "zip")
    
-   output$download_inferensia_pdf <- generate_download_handler("inferensia", "pdf")
-   output$download_inferensia_word <- generate_download_handler("inferensia", "word")
+   # Uji Rata-rata Tab Downloads
+   output$download_uji_rata_jpg <- generate_download_handler("uji_rata", "jpg")
+   output$download_uji_rata_word <- generate_download_handler("uji_rata", "word")
+   output$download_uji_rata_pdf <- generate_download_handler("uji_rata", "pdf")
+   output$download_uji_rata_zip <- generate_download_handler("uji_rata", "zip")
    
-   output$download_regresi_pdf <- generate_download_handler("regresi", "pdf")
+   # Uji Proporsi Tab Downloads
+   output$download_uji_proporsi_jpg <- generate_download_handler("uji_proporsi", "jpg")
+   output$download_uji_proporsi_word <- generate_download_handler("uji_proporsi", "word")
+   output$download_uji_proporsi_pdf <- generate_download_handler("uji_proporsi", "pdf")
+   output$download_uji_proporsi_zip <- generate_download_handler("uji_proporsi", "zip")
+   
+   # ANOVA Tab Downloads
+   output$download_anova_jpg <- generate_download_handler("anova", "jpg")
+   output$download_anova_word <- generate_download_handler("anova", "word")
+   output$download_anova_pdf <- generate_download_handler("anova", "pdf")
+   output$download_anova_zip <- generate_download_handler("anova", "zip")
+   
+   # Regresi Tab Downloads
+   output$download_regresi_jpg <- generate_download_handler("regresi", "jpg")
    output$download_regresi_word <- generate_download_handler("regresi", "word")
+   output$download_regresi_pdf <- generate_download_handler("regresi", "pdf")
+   output$download_regresi_zip <- generate_download_handler("regresi", "zip")
 }
 
 # Run the app
