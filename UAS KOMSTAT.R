@@ -74,7 +74,7 @@ sovi_peta <- left_join(peta_kabupaten, sovi_data, by = "DISTRICTCODE")
 
 # Navy-Denim-Neptune theme color palette
 colors <- c("#1A237E", "#3949AB", "#E8EAF6", "#90A4AE", "#5C6BC0", "#26C6DA", "#006064", "#455A64", "#263238")
-# Navy-Denim-Neptune themed CSS
+# Navy-Denim-Neptune themed CSS with Enhanced Download Buttons
 custom_css <- paste0("
 .content-wrapper, .right-side {
   background: linear-gradient(135deg, #E8EAF6 0%, #F3E5F5 100%);
@@ -111,7 +111,114 @@ custom_css <- paste0("
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
 }
+
+/* Enhanced Download Button Styles */
+.download-panel {
+  background: linear-gradient(135deg, #1A237E 0%, #26C6DA 100%);
+  border-radius: 15px;
+  padding: 20px;
+  margin: 15px 0;
+  box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #3949AB 0%, #26C6DA 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  color: white;
+  font-weight: 600;
+  margin: 5px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px rgba(57, 73, 171, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.download-btn:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.download-btn:hover:before {
+  left: 100%;
+}
+
+.download-btn:hover {
+  background: linear-gradient(135deg, #1A237E 0%, #006064 100%);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 30px rgba(26, 35, 126, 0.5);
+  color: #fff;
+}
+
+.download-btn:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.download-btn.disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.download-btn.disabled:hover {
+  background: #ccc;
+  transform: none;
+  box-shadow: none;
+}
+
+.download-title {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
 ")
+
+# Helper function untuk membuat download panel
+create_download_panel <- function(tab_name, show_conditions = NULL) {
+  # Conditional buttons based on tab requirements
+  conditional_conditions <- if(!is.null(show_conditions)) {
+    paste0("(", paste(show_conditions, collapse = " || "), ")")
+  } else {
+    "true"
+  }
+  
+  conditionalPanel(
+    condition = conditional_conditions,
+    div(
+      class = "download-panel",
+      div(class = "download-title", paste("📥 Download", tools::toTitleCase(gsub("_", " ", tab_name)))),
+      div(
+        style = "text-align: center;",
+        downloadButton(
+          outputId = paste0("download_", tab_name, "_pdf"),
+          label = HTML('<i class="fa fa-file-pdf-o" style="margin-right: 8px;"></i>📄 PDF Lengkap'),
+          class = "download-btn",
+          style = "width: 48%; margin: 1%;",
+          title = "Download laporan lengkap dalam format PDF dengan semua grafik dan analisis"
+        ),
+        downloadButton(
+          outputId = paste0("download_", tab_name, "_word"),
+          label = HTML('<i class="fa fa-file-word-o" style="margin-right: 8px;"></i>📝 Word Report'),
+          class = "download-btn",
+          style = "width: 48%; margin: 1%;",
+          title = "Download hasil analisis dalam format Word untuk editing lebih lanjut"
+        )
+      )
+    )
+  )
+}
 
 # UI
 ui <- dashboardPage(
@@ -139,64 +246,18 @@ ui <- dashboardPage(
       menuItem("Regresi Linear Berganda", tabName = "regresi", icon = icon("line-chart"))
     ),
     
-    # Download section in sidebar
-    div(
-      style = "background: rgba(255,255,255,0.1); margin: 10px; padding: 15px; border-radius: 8px;",
-      conditionalPanel(
-        condition = "input.sidebar == 'beranda'",
-        h5("Download Beranda", style = "color: white;"),
-        downloadButton("download_beranda_jpg", "JPG", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_beranda_pdf", "PDF", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_beranda_word", "Word", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_beranda_all", "Semua", class = "btn-primary btn-sm", style = "width: 100%;")
-      ),
-      conditionalPanel(
-        condition = "input.sidebar == 'manajemen'",
-        h5("Download Manajemen", style = "color: white;"),
-        downloadButton("download_manajemen_jpg", "JPG", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_manajemen_pdf", "PDF", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_manajemen_word", "Word", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_manajemen_all", "Semua", class = "btn-primary btn-sm", style = "width: 100%;")
-      ),
-      conditionalPanel(
-        condition = "input.sidebar == 'eksplorasi'",
-        h5("Download Eksplorasi", style = "color: white;"),
-        downloadButton("download_eksplorasi_jpg", "JPG", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_eksplorasi_pdf", "PDF", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_eksplorasi_word", "Word", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_eksplorasi_all", "Semua", class = "btn-primary btn-sm", style = "width: 100%;")
-      ),
-      conditionalPanel(
-        condition = "input.sidebar == 'asumsi'",
-        h5("Download Uji Asumsi", style = "color: white;"),
-        downloadButton("download_asumsi_jpg", "JPG", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_asumsi_pdf", "PDF", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_asumsi_word", "Word", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_asumsi_all", "Semua", class = "btn-primary btn-sm", style = "width: 100%;")
-      ),
-      conditionalPanel(
-        condition = "input.sidebar == 'uji_rata' || input.sidebar == 'uji_proporsi' || input.sidebar == 'anova'",
-        h5("Download Inferensia", style = "color: white;"),
-        downloadButton("download_inferensia_jpg", "JPG", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_inferensia_pdf", "PDF", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_inferensia_word", "Word", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_inferensia_all", "Semua", class = "btn-primary btn-sm", style = "width: 100%;")
-      ),
-      conditionalPanel(
-        condition = "input.sidebar == 'regresi'",
-        h5("Download Regresi", style = "color: white;"),
-        downloadButton("download_regresi_jpg", "JPG", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_regresi_pdf", "PDF", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_regresi_word", "Word", class = "btn-primary btn-sm", style = "width: 100%; margin-bottom: 5px;"),
-        downloadButton("download_regresi_all", "Semua", class = "btn-primary btn-sm", style = "width: 100%;")
-      )
-    )
+
   ),
   
   dashboardBody(
     useShinyjs(),
     tags$head(
-      tags$style(HTML(custom_css))
+      tags$style(HTML(custom_css)),
+      tags$script(HTML("
+        Shiny.addCustomMessageHandler('triggerDownload', function(message) {
+          $('#' + message.id)[0].click();
+        });
+      "))
     ),
     
     tabItems(
@@ -208,7 +269,7 @@ ui <- dashboardPage(
                  div(
                    style = paste0("background: linear-gradient(135deg, ", colors[1], " 0%, ", colors[2], " 100%); color: white; padding: 25px; margin-bottom: 25px; border-radius: 8px; text-align: center;"),
                    h1("🌟 DAVIRA - DASHBOARD SOVI BY RAYA", style = "margin: 0; font-weight: 600; font-size: 2.5em;"),
-                   p("🏛️ Advanced Social Vulnerability Intelligence Platform | STIS 2025 🏆", style = "margin: 10px 0 0 0; opacity: 0.9; font-size: 1.2em;")
+                                        p("🏛️ Advanced Social Vulnerability Intelligence Platform | KOMPUTASI STATISTIK 2025 🏆", style = "margin: 10px 0 0 0; opacity: 0.9; font-size: 1.2em;")
                  )
           )
         ),
@@ -456,6 +517,11 @@ ui <- dashboardPage(
                    uiOutput("beranda_interpretation")
                  )
           )
+        ),
+        
+        # Download Panel untuk Beranda
+        fluidRow(
+          column(12, create_download_panel("beranda"))
         )
       ),
       
@@ -646,6 +712,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk Manajemen Data
+        fluidRow(
+          column(12, create_download_panel("manajemen"))
         )
       ),
       
@@ -850,6 +921,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk Eksplorasi Data
+        fluidRow(
+          column(12, create_download_panel("eksplorasi"))
         )
       ),
       
@@ -959,6 +1035,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk Uji Asumsi (Conditional)
+        fluidRow(
+          column(12, create_download_panel("asumsi", c("input.run_normality > 0", "input.run_homogeneity > 0")))
         )
       ),
       
@@ -1908,7 +1989,7 @@ server <- function(input, output, session) {
       
       "Matriks korelasi menunjukkan hubungan antar variabel kunci, sementara distribusi regional mengungkap pola geografis kerentanan sosial. ",
       "Peta interaktif memungkinkan eksplorasi detail tingkat kabupaten/kota untuk identifikasi hotspot kerentanan. ",
-      "Dashboard ini dirancang untuk ujian Statistika Terapan STIS 2025 dengan implementasi metodologi analisis yang komprehensif dan sesuai standar akademik."
+      "Dashboard ini dirancang untuk ujian KOMPUTASI STATISTIK STIS 2025 dengan implementasi metodologi analisis yang komprehensif dan sesuai standar akademik."
     )
     
     HTML(interpretation)
@@ -3636,7 +3717,7 @@ server <- function(input, output, session) {
       '```\n\n',
       
       '# Executive Summary\n\n',
-      'Laporan ini menyajikan hasil analisis komprehensif terhadap dataset Social Vulnerability Index (SOVI) yang mencakup ', nrow(sovi_data), ' observasi kabupaten/kota di Indonesia. Analisis ini dilakukan dalam rangka ujian Statistika Terapan STIS 2025 dengan fokus pada tab "', tab_name, '".\n\n',
+      'Laporan ini menyajikan hasil analisis komprehensif terhadap dataset Social Vulnerability Index (SOVI) yang mencakup ', nrow(sovi_data), ' observasi kabupaten/kota di Indonesia. Analisis ini dilakukan dalam rangka ujian KOMPUTASI STATISTIK STIS 2025 dengan fokus pada tab "', tab_name, '".\n\n',
       
       '## Dataset Overview\n\n',
       '```{r dataset-info}\n',
@@ -3695,7 +3776,7 @@ server <- function(input, output, session) {
       
       '\n\n## Metadata Analisis\n\n',
       '- **Platform Analisis**: R Shiny Dashboard\n',
-      '- **Metode Statistik**: Sesuai dengan kurikulum Statistika Terapan STIS\n',
+      '- **Metode Statistik**: Sesuai dengan kurikulum KOMPUTASI STATISTIK STIS\n',
       '- **Tanggal Analisis**: ', format(Sys.Date(), "%d %B %Y"), '\n',
       '- **Sumber Data**: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv\n',
       '- **Referensi**: https://www.sciencedirect.com/science/article/pii/S2352340921010180\n\n',
@@ -3744,7 +3825,7 @@ server <- function(input, output, session) {
           platform = "R Shiny Dashboard",
           exam_date = "2025-07-23",
           institution = "STIS (Sekolah Tinggi Ilmu Statistik)",
-          course = "Statistika Terapan"
+          course = "KOMPUTASI STATISTIK"
         ),
         generated_on = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
       )
@@ -3794,14 +3875,10 @@ server <- function(input, output, session) {
                  # Format-specific filename logic
          timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
          
-         if(format_type == "jpg") {
-           paste0("SOVI_", current_tab, "_Gambar_", timestamp, ".jpg")
+         if(format_type == "pdf") {
+           paste0("SOVI_", current_tab, "_Lengkap_", timestamp, ".pdf")
          } else if(format_type == "word") {
-           paste0("SOVI_", current_tab, "_Laporan_", timestamp, ".html")
-         } else if(format_type == "pdf") {
-           paste0("SOVI_", current_tab, "_Dokumen_", timestamp, ".pdf")
-         } else if(format_type == "all") {
-           paste0("SOVI_", current_tab, "_Lengkap_", timestamp, ".zip")
+           paste0("SOVI_", current_tab, "_Laporan_", timestamp, ".docx")
          } else {
            paste0("SOVI_", current_tab, "_", timestamp, ".", format_type)
          }
@@ -3986,29 +4063,8 @@ server <- function(input, output, session) {
           plots_created <- list("regresi_scatter" = p1, "residual_plot" = p2)
         }
         
-        # Save all plots as JPG files
-        plot_files <- c()
-        for(plot_name in names(plots_created)) {
-          plot_file <- file.path(temp_dir, paste0(plot_name, ".jpg"))
-          ggsave(plot_file, plot = plots_created[[plot_name]], device = "jpeg", width = 10, height = 6, dpi = 300)
-          plot_files <- c(plot_files, plot_file)
-        }
-        
-                 # ===============================================
-         # 2. HANDLE FORMAT JPG - SINGLE OR MULTIPLE IMAGES
-         # ===============================================
-         if (format_type == "jpg") {
-           if(length(plot_files) == 1) {
-             # Single image: direct copy
-             file.copy(plot_files[1], file)
-           } else {
-             # Multiple images: create composite or pick main one
-             # For now, let's create a combined plot or pick the first main plot
-             main_plot_file <- plot_files[1]  # Use the first plot as representative
-             file.copy(main_plot_file, file)
-           }
-           return()
-         }
+                 # Store plots for later use in PDF/Word
+         # No need to save as individual JPG files
         
         # ===============================================
         # 3. GENERATE TEXT CONTENT FOR WORD/PDF
@@ -4240,85 +4296,97 @@ server <- function(input, output, session) {
           }
         }
         
-                 # ===============================================
-         # 4. HANDLE FORMAT WORD - DIRECT HTML FILE
+                          # ===============================================
+         # 4. HANDLE FORMAT WORD - PROPER DOCX FILE
          # ===============================================
          if (format_type == "word") {
-           # Create HTML that can be opened as Word - DIRECT COPY TO OUTPUT FILE
-           html_content <- paste0(
-             "<!DOCTYPE html><html><head>",
-             '<meta charset="UTF-8">',
-             "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
-             "<style>",
-             "body { font-family: 'Times New Roman', serif; margin: 40px; line-height: 1.6; color: #333; }",
-             "h1 { color: #1A237E; font-size: 24px; text-align: center; margin-bottom: 20px; }",
-             "h2 { color: #3949AB; font-size: 18px; margin-top: 25px; margin-bottom: 15px; }",
-             "h3 { color: #546E7A; font-size: 16px; margin-top: 20px; margin-bottom: 10px; }",
-             ".header { background-color: #E8EAF6; padding: 20px; border-radius: 5px; margin-bottom: 30px; }",
-             ".content { white-space: pre-line; font-size: 12px; }",
-             ".footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 10px; color: #666; }",
-             "</style>",
-             "</head><body>",
-             '<div class="header">',
-             "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
-             "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
-             "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
-             "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
-             "<p><strong>Institution:</strong> STIS 2025 - Statistika Terapan</p>",
-             "</div>",
-             '<div class="content">',
-             gsub("\n", "<br>", text_content),
-             "</div>",
-             '<div class="footer">',
-             "<p>Laporan ini dibuat menggunakan DAVIRA - SOVI Analytics Hub</p>",
-             "<p>Data Source: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv</p>",
-             "<p>Reference: https://www.sciencedirect.com/science/article/pii/S2352340921010180</p>",
-             "</div>",
-             "</body></html>"
+           # Create RTF content which can be opened as Word
+           rtf_content <- paste0(
+             "{\\rtf1\\ansi\\deff0",
+             "{\\fonttbl{\\f0 Times New Roman;}}",
+             "{\\colortbl;\\red26\\green35\\blue126;\\red57\\green73\\blue171;}",
+             "\\f0\\fs24",
+             "\\qc{\\b\\fs32\\cf1 DAVIRA - SOVI Analytics Hub}\\par",
+             "\\qc{\\b\\fs28\\cf2 Laporan Analisis ", tools::toTitleCase(tab_name), "}\\par\\par",
+             "\\ql{\\b Generated:} ", format(Sys.time(), "%Y-%m-%d %H:%M"), "\\par",
+             "{\\b Dataset:} Social Vulnerability Index\\par",
+             "{\\b Institution:} STIS 2025 - KOMPUTASI STATISTIK\\par\\par",
+             gsub("\n", "\\par ", text_content),
+             "\\par\\par",
+             "{\\fs18 Laporan ini dibuat menggunakan DAVIRA - SOVI Analytics Hub}\\par",
+             "{\\fs18 Data Source: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv}\\par",
+             "}"
            )
            
-           # Write directly to the output file
-           writeLines(html_content, file, useBytes = TRUE)
+           # Write RTF content to file
+           writeLines(rtf_content, file, useBytes = TRUE)
            return()
          }
         
-                 # ===============================================
-         # 5. HANDLE FORMAT PDF - DIRECT PDF FILE
+                          # ===============================================
+         # 5. HANDLE FORMAT PDF - COMPREHENSIVE PDF WITH ALL CONTENT
          # ===============================================
          if (format_type == "pdf") {
-          tryCatch({
-            pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
-            pdf(pdf_file, width = 11, height = 8.5)
-            
-            # Title page
-            plot.new()
-            text(0.5, 0.9, "🌟 DAVIRA - SOVI Analytics Hub", cex = 2, font = 2, col = "#1A237E")
-            text(0.5, 0.8, paste("Laporan Analisis", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
-            text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1)
-            text(0.5, 0.6, "STIS 2025 - Statistika Terapan", cex = 1.2, col = "#3949AB")
-            text(0.5, 0.5, paste("Dataset: Social Vulnerability Index"), cex = 1)
-            text(0.5, 0.4, paste("Total Observations:", nrow(sovi_data)), cex = 1)
-            
-            # Add all plots
-            for(plot_name in names(plots_created)) {
-              print(plots_created[[plot_name]])
-            }
-            
-            # Add text content page
-            plot.new()
-            text(0.5, 0.95, "Hasil Analisis dan Interpretasi", cex = 1.5, font = 2)
-            
-            # Split text content into lines for better formatting
-            lines <- strsplit(text_content, "\n")[[1]]
-            lines <- lines[nchar(lines) > 0] # Remove empty lines
-            y_pos <- 0.9
-            
-            for(line in lines[1:min(length(lines), 40)]) { # Limit lines to fit page
-              if(y_pos > 0.05) {
-                text(0.05, y_pos, line, cex = 0.8, adj = 0)
-                y_pos <- y_pos - 0.02
-              }
-            }
+           tryCatch({
+             pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
+             pdf(pdf_file, width = 11, height = 8.5)
+             
+             # Title page
+             plot.new()
+             text(0.5, 0.9, "DAVIRA - SOVI Analytics Hub", cex = 2.2, font = 2, col = "#1A237E")
+             text(0.5, 0.8, paste("Laporan Lengkap Analisis", tools::toTitleCase(tab_name)), cex = 1.6, font = 2)
+             text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1.1)
+             text(0.5, 0.6, "STIS 2025 - KOMPUTASI STATISTIK", cex = 1.3, col = "#3949AB")
+             text(0.5, 0.5, "Dataset: Social Vulnerability Index", cex = 1)
+             text(0.5, 0.4, paste("Total Observations:", nrow(sovi_data)), cex = 1)
+             text(0.5, 0.3, paste("Total Variables:", ncol(sovi_data)), cex = 1)
+             
+             # Add all plots with titles
+             for(plot_name in names(plots_created)) {
+               # Add plot title page
+               plot.new()
+               text(0.5, 0.95, paste("Grafik:", gsub("_", " ", tools::toTitleCase(plot_name))), cex = 1.4, font = 2, col = "#1A237E")
+               
+               # Add the actual plot
+               print(plots_created[[plot_name]])
+             }
+             
+             # Add comprehensive text content across multiple pages
+             lines <- strsplit(text_content, "\n")[[1]]
+             lines <- lines[nchar(lines) > 0] # Remove empty lines
+             
+             # Split lines into pages (about 35 lines per page)
+             lines_per_page <- 35
+             total_pages <- ceiling(length(lines) / lines_per_page)
+             
+             for(page in 1:total_pages) {
+               start_line <- (page - 1) * lines_per_page + 1
+               end_line <- min(page * lines_per_page, length(lines))
+               
+               plot.new()
+               text(0.5, 0.97, "Hasil Analisis dan Interpretasi", cex = 1.4, font = 2, col = "#1A237E")
+               text(0.95, 0.03, paste("Halaman", page, "dari", total_pages), cex = 0.8, adj = 1)
+               
+               y_pos <- 0.92
+               for(i in start_line:end_line) {
+                 if(y_pos > 0.05) {
+                   # Handle long lines by wrapping
+                   line <- lines[i]
+                   if(nchar(line) > 100) {
+                     wrapped_lines <- strwrap(line, width = 100)
+                     for(wrapped_line in wrapped_lines) {
+                       if(y_pos > 0.05) {
+                         text(0.05, y_pos, wrapped_line, cex = 0.75, adj = 0)
+                         y_pos <- y_pos - 0.025
+                       }
+                     }
+                   } else {
+                     text(0.05, y_pos, line, cex = 0.75, adj = 0)
+                     y_pos <- y_pos - 0.025
+                   }
+                 }
+               }
+             }
              
              dev.off()
              
@@ -4326,127 +4394,44 @@ server <- function(input, output, session) {
              file.copy(pdf_file, file)
              return()
            }, error = function(e) {
-             # Fallback for PDF - copy first plot
-             file.copy(plot_files[1], file)
+             # Fallback: create simple PDF with text only
+             pdf(file, width = 11, height = 8.5)
+             plot.new()
+             text(0.5, 0.9, "DAVIRA - SOVI Analytics Hub", cex = 2, font = 2)
+             text(0.5, 0.8, "Error generating full report", cex = 1.2)
+             text(0.5, 0.7, paste("Tab:", tools::toTitleCase(tab_name)), cex = 1)
+             dev.off()
              return()
            })
          }
         
-                 # ===============================================
-         # 6. HANDLE FORMAT ALL (ZIP) - COMPLETE PACKAGE
-         # ===============================================
-         if (format_type == "all") {
-           # Create PDF version for ZIP
-           tryCatch({
-             pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
-             pdf(pdf_file, width = 11, height = 8.5)
-             
-             # Title page
-             plot.new()
-             text(0.5, 0.9, "🌟 DAVIRA - SOVI Analytics Hub", cex = 2, font = 2, col = "#1A237E")
-             text(0.5, 0.8, paste("Laporan Analisis", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
-             text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1)
-             
-             # Add all plots
-             for(plot_name in names(plots_created)) {
-               print(plots_created[[plot_name]])
-             }
-             
-             dev.off()
-           }, error = function(e) {
-             # PDF creation failed, continue without it
-           })
-           
-           # Create HTML version for ALL format
-           html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
-           
-           html_content <- paste0(
-             "<!DOCTYPE html><html><head>",
-             '<meta charset="UTF-8">',
-             "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
-             "<style>",
-             "body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }",
-             "h1 { color: #1A237E; } h2 { color: #3949AB; }",
-             ".content { white-space: pre-line; }",
-             "</style>",
-             "</head><body>",
-             "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
-             "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
-             "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
-             '<div class="content">',
-             gsub("\n", "<br>", text_content),
-             "</div>",
-             "</body></html>"
-           )
-           
-           writeLines(html_content, html_file)
-           
-           # Collect all files for ZIP
-           all_files <- plot_files
-           pdf_file_path <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
-           if(file.exists(pdf_file_path)) {
-             all_files <- c(all_files, pdf_file_path)
-           }
-           all_files <- c(all_files, html_file)
-           
-           # Create ZIP
-           tryCatch({
-             zip::zip(file, basename(all_files), root = temp_dir)
-           }, error = function(e) {
-             # Manual zip fallback
-             tryCatch({
-               setwd(temp_dir)
-               system(paste("zip", shQuote(basename(file)), paste(shQuote(basename(all_files)), collapse = " ")))
-               file.copy(basename(file), file)
-             }, error = function(e2) {
-               # Ultimate fallback: copy first plot
-               file.copy(plot_files[1], file)
-             })
-           })
-         }
+                 
       }
     )
   }
   
-  # ===============================================
-  # INDIVIDUAL DOWNLOAD HANDLERS - FIXED VERSION
-  # ===============================================
-  
-  # BERANDA handlers
-  output$download_beranda_jpg <- generate_download_handler("beranda", "jpg")
-  output$download_beranda_pdf <- generate_download_handler("beranda", "pdf") 
-  output$download_beranda_word <- generate_download_handler("beranda", "word")
-  output$download_beranda_all <- generate_download_handler("beranda", "all")
-  
-  # MANAJEMEN handlers
-  output$download_manajemen_jpg <- generate_download_handler("manajemen", "jpg")
-  output$download_manajemen_pdf <- generate_download_handler("manajemen", "pdf")
-  output$download_manajemen_word <- generate_download_handler("manajemen", "word")
-  output$download_manajemen_all <- generate_download_handler("manajemen", "all")
-  
-  # EKSPLORASI handlers  
-  output$download_eksplorasi_jpg <- generate_download_handler("eksplorasi", "jpg")
-  output$download_eksplorasi_pdf <- generate_download_handler("eksplorasi", "pdf")
-  output$download_eksplorasi_word <- generate_download_handler("eksplorasi", "word")
-  output$download_eksplorasi_all <- generate_download_handler("eksplorasi", "all")
-  
-  # ASUMSI handlers
-  output$download_asumsi_jpg <- generate_download_handler("asumsi", "jpg")
-  output$download_asumsi_pdf <- generate_download_handler("asumsi", "pdf")
-  output$download_asumsi_word <- generate_download_handler("asumsi", "word")
-  output$download_asumsi_all <- generate_download_handler("asumsi", "all")
-  
-  # INFERENSIA handlers
-  output$download_inferensia_jpg <- generate_download_handler("inferensia", "jpg")
-  output$download_inferensia_pdf <- generate_download_handler("inferensia", "pdf")
-  output$download_inferensia_word <- generate_download_handler("inferensia", "word")
-  output$download_inferensia_all <- generate_download_handler("inferensia", "all")
-  
-  # REGRESI handlers
-  output$download_regresi_jpg <- generate_download_handler("regresi", "jpg")
-  output$download_regresi_pdf <- generate_download_handler("regresi", "pdf")
-  output$download_regresi_word <- generate_download_handler("regresi", "word")
-  output$download_regresi_all <- generate_download_handler("regresi", "all")
+        # ===============================================
+   # DOWNLOAD HANDLERS - SIMPLIFIED VERSION
+   # ===============================================
+   
+   # Direct download handlers
+   output$download_beranda_pdf <- generate_download_handler("beranda", "pdf") 
+   output$download_beranda_word <- generate_download_handler("beranda", "word")
+   
+   output$download_manajemen_pdf <- generate_download_handler("manajemen", "pdf")
+   output$download_manajemen_word <- generate_download_handler("manajemen", "word")
+   
+   output$download_eksplorasi_pdf <- generate_download_handler("eksplorasi", "pdf")
+   output$download_eksplorasi_word <- generate_download_handler("eksplorasi", "word")
+   
+   output$download_asumsi_pdf <- generate_download_handler("asumsi", "pdf")
+   output$download_asumsi_word <- generate_download_handler("asumsi", "word")
+   
+   output$download_inferensia_pdf <- generate_download_handler("inferensia", "pdf")
+   output$download_inferensia_word <- generate_download_handler("inferensia", "word")
+   
+   output$download_regresi_pdf <- generate_download_handler("regresi", "pdf")
+   output$download_regresi_word <- generate_download_handler("regresi", "word")
 }
 
 # Run the app
