@@ -244,9 +244,7 @@ ui <- dashboardPage(
                menuSubItem("ANOVA", tabName = "anova")
       ),
       menuItem("Regresi Linear Berganda", tabName = "regresi", icon = icon("line-chart"))
-    ),
-    
-
+    )
   ),
   
   dashboardBody(
