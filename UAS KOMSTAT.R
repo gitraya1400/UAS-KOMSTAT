@@ -31,6 +31,7 @@ library(cluster)
 library(factoextra)
 library(ggdendro)
 library(jsonlite)
+library(reshape2)
 
 # Load SOVI data dari URL yang diberikan
 sovi_data <- read_csv("sovi_data.csv")
@@ -3778,7 +3779,7 @@ server <- function(input, output, session) {
     ))
   })
   
-  # Enhanced tab-specific download handler generator
+  # Enhanced tab-specific download handler generator dengan logika yang diperbaiki
   generate_download_handler <- function(tab_name, format_type) {
     downloadHandler(
       filename = function() {
@@ -3799,99 +3800,479 @@ server <- function(input, output, session) {
       },
       content = function(file) {
         temp_dir <- tempdir()
+        all_files <- c()
         
-        # Create tab-specific plots and content
+        # ===============================================
+        # 1. GENERATE PLOTS/IMAGES UNTUK SEMUA FORMAT
+        # ===============================================
+        
+        plots_created <- list()
+        
         if(tab_name == "beranda") {
+          # Plot 1: Distribusi kemiskinan
           p1 <- ggplot(sovi_data, aes(x = POVERTY)) + 
             geom_histogram(bins = 30, fill = colors[1], alpha = 0.7, color = "white") + 
             labs(title = "Distribusi Tingkat Kemiskinan SOVI", x = "Tingkat Kemiskinan (%)", y = "Frekuensi") + 
             theme_minimal() + theme(plot.title = element_text(color = colors[1], size = 14, face = "bold"))
+          
+          # Plot 2: Korelasi matrix
+          key_vars <- sovi_data[, c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH")]
+          cor_matrix <- cor(key_vars, use = "complete.obs")
+          p2 <- ggplot(data = reshape2::melt(cor_matrix), aes(x = Var1, y = Var2, fill = value)) +
+            geom_tile() +
+            scale_fill_gradient2(low = colors[7], high = colors[8], mid = "white", midpoint = 0) +
+            labs(title = "Matriks Korelasi Variabel SOVI", x = "", y = "", fill = "Korelasi") +
+            theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+          
+          # Plot 3: Regional distribution  
+          p3 <- ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
+            geom_point(alpha = 0.6, color = colors[1]) + 
+            geom_smooth(method = "lm", color = colors[2]) +
+            labs(title = "Hubungan Kemiskinan vs Pendidikan Rendah", x = "Kemiskinan (%)", y = "Pendidikan Rendah (%)") + 
+            theme_minimal()
+          
+          plots_created <- list("distribusi_kemiskinan" = p1, "korelasi_matrix" = p2, "scatter_poverty_education" = p3)
+          
+        } else if(tab_name == "manajemen") {
+          # Plot 1: Data quality overview
+          missing_data <- sapply(sovi_data, function(x) sum(is.na(x)))
+          quality_df <- data.frame(
+            Variable = names(missing_data),
+            Missing = missing_data,
+            Complete = nrow(sovi_data) - missing_data
+          )
+          quality_df_long <- reshape2::melt(quality_df, id.vars = "Variable")
+          
+          p1 <- ggplot(quality_df_long, aes(x = Variable, y = value, fill = variable)) +
+            geom_bar(stat = "identity", position = "stack") +
+            scale_fill_manual(values = c("Missing" = colors[7], "Complete" = colors[8])) +
+            labs(title = "Kualitas Data SOVI per Variabel", x = "Variabel", y = "Jumlah Observasi", fill = "Status") +
+            theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+          
+          # Plot 2: Outlier detection
+          key_vars <- sovi_data[, c("POVERTY", "LOWEDU", "ELDERLY", "GROWTH")]
+          z_scores <- key_vars %>%
+            mutate_all(~ abs(scale(.)[,1])) %>%
+            mutate(ID = row_number()) %>%
+            pivot_longer(-ID, names_to = "Variable", values_to = "Z_Score")
+          
+          p2 <- ggplot(z_scores, aes(x = Variable, y = Z_Score)) +
+            geom_boxplot(fill = colors[8], alpha = 0.7) +
+            geom_hline(yintercept = 3, color = colors[7], linetype = "dashed", size = 1) +
+            labs(title = "Deteksi Outlier (Z-Score > 3)", x = "Variabel", y = "Absolute Z-Score") +
+            theme_minimal()
+          
+          plots_created <- list("data_quality" = p1, "outlier_detection" = p2)
+          
         } else if(tab_name == "eksplorasi") {
-          p1 <- ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
+          # Plot 1: Distribusi multiple variables
+          key_vars_long <- sovi_data %>%
+            select(POVERTY, LOWEDU, ELDERLY, GROWTH) %>%
+            pivot_longer(everything(), names_to = "Variable", values_to = "Value")
+          
+          p1 <- ggplot(key_vars_long, aes(x = Value, fill = Variable)) +
+            geom_histogram(bins = 20, alpha = 0.7) +
+            facet_wrap(~Variable, scales = "free") +
+            scale_fill_manual(values = colors[1:4]) +
+            labs(title = "Distribusi Variabel Kunci SOVI", x = "Nilai", y = "Frekuensi") +
+            theme_minimal() + theme(legend.position = "none")
+          
+          # Plot 2: Correlation scatter
+          p2 <- ggplot(sovi_data, aes(x = POVERTY, y = LOWEDU)) + 
             geom_point(color = colors[1], alpha = 0.6) + 
             geom_smooth(method = "lm", color = colors[2]) + 
             labs(title = "Hubungan Kemiskinan vs Pendidikan Rendah", x = "Tingkat Kemiskinan (%)", y = "Pendidikan Rendah (%)") + 
-            theme_minimal() + theme(plot.title = element_text(color = colors[1], size = 14, face = "bold"))
-        } else {
-          p1 <- ggplot(sovi_data, aes(x = GROWTH, y = POVERTY)) + 
+            theme_minimal()
+          
+          # Plot 3: Boxplot by categories
+          sovi_data_subset <- sovi_data %>%
+            select(POVERTY, Population_Size) %>%
+            filter(!is.na(Population_Size))
+          
+          p3 <- ggplot(sovi_data_subset, aes(x = Population_Size, y = POVERTY, fill = Population_Size)) +
+            geom_boxplot(alpha = 0.7) +
+            scale_fill_manual(values = colors[1:2]) +
+            labs(title = "Distribusi Kemiskinan berdasarkan Ukuran Populasi", x = "Ukuran Populasi", y = "Tingkat Kemiskinan") +
+            theme_minimal() + theme(legend.position = "none")
+          
+          plots_created <- list("distribusi_multivariabel" = p1, "scatter_korelasi" = p2, "boxplot_kategori" = p3)
+          
+        } else if(tab_name == "asumsi") {
+          # Plot 1: Normality test visualization
+          p1 <- ggplot(sovi_data, aes(x = POVERTY)) +
+            geom_histogram(aes(y = after_stat(density)), bins = 30, fill = colors[1], alpha = 0.7, color = "white") +
+            stat_function(fun = dnorm, args = list(mean = mean(sovi_data$POVERTY, na.rm = TRUE), 
+                                                   sd = sd(sovi_data$POVERTY, na.rm = TRUE)), 
+                          color = colors[2], size = 1) +
+            labs(title = "Uji Normalitas: Distribusi POVERTY dengan Kurva Normal", x = "POVERTY", y = "Densitas") +
+            theme_minimal()
+          
+          # Plot 2: Q-Q Plot
+          poverty_clean <- sovi_data$POVERTY[!is.na(sovi_data$POVERTY)]
+          qq_data <- data.frame(
+            sample = sort(poverty_clean),
+            theoretical = qnorm(ppoints(length(poverty_clean)))
+          )
+          
+          p2 <- ggplot(qq_data, aes(x = theoretical, y = sample)) +
+            geom_point(alpha = 0.6, color = colors[1]) +
+            geom_abline(slope = sd(poverty_clean), intercept = mean(poverty_clean), color = colors[2], size = 1) +
+            labs(title = "Q-Q Plot untuk Uji Normalitas POVERTY", x = "Kuantil Teoritis", y = "Kuantil Sampel") +
+            theme_minimal()
+          
+          plots_created <- list("normalitas_histogram" = p1, "qq_plot" = p2)
+          
+        } else if(tab_name == "inferensia") {
+          # Plot 1: T-test visualization
+          sample_mean <- mean(sovi_data$POVERTY, na.rm = TRUE)
+          
+          p1 <- ggplot(sovi_data, aes(x = POVERTY)) +
+            geom_histogram(bins = 30, fill = colors[1], alpha = 0.7, color = "white") +
+            geom_vline(xintercept = sample_mean, color = colors[2], size = 1, linetype = "dashed") +
+            geom_vline(xintercept = 15, color = colors[7], size = 1, linetype = "solid") +
+            labs(title = "Uji t: Rata-rata Sampel vs Nilai Hipotesis", x = "POVERTY", y = "Frekuensi",
+                 subtitle = "Garis merah = Rata-rata sampel, Garis biru = Nilai hipotesis") +
+            theme_minimal()
+          
+          # Plot 2: ANOVA visualization
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            group_means <- clean_data %>% group_by(Economic_Status) %>% summarise(Mean_Poverty = mean(POVERTY, na.rm = TRUE))
+            
+            p2 <- ggplot(group_means, aes(x = Economic_Status, y = Mean_Poverty, fill = Economic_Status)) +
+              geom_bar(stat = "identity", alpha = 0.7) +
+              scale_fill_manual(values = colors[1:3]) +
+              labs(title = "ANOVA: Rata-rata Kemiskinan per Status Ekonomi", x = "Status Ekonomi", y = "Rata-rata Kemiskinan") +
+              theme_minimal() + theme(legend.position = "none")
+          } else {
+            p2 <- ggplot(sovi_data, aes(x = GROWTH, y = POVERTY)) + 
+              geom_point(color = colors[1], alpha = 0.6) +
+              labs(title = "Analisis Inferensia: Growth vs Poverty", x = "Growth", y = "Poverty") + 
+              theme_minimal()
+          }
+          
+          plots_created <- list("uji_t_visual" = p1, "anova_visual" = p2)
+          
+        } else if(tab_name == "regresi") {
+          # Plot 1: Scatter with regression line
+          p1 <- ggplot(sovi_data, aes(x = LOWEDU, y = POVERTY)) + 
             geom_point(color = colors[1], alpha = 0.6) + 
-            labs(title = paste("Analisis", tools::toTitleCase(tab_name)), x = "Pertumbuhan", y = "Kemiskinan") + 
-            theme_minimal() + theme(plot.title = element_text(color = colors[1], size = 14, face = "bold"))
+            geom_smooth(method = "lm", color = colors[2]) + 
+            labs(title = "Regresi Linear: POVERTY vs LOWEDU", x = "Low Education (%)", y = "Poverty (%)") + 
+            theme_minimal()
+          
+          # Plot 2: Residual plot (simulated)
+          model_simple <- lm(POVERTY ~ LOWEDU, data = sovi_data)
+          residual_data <- data.frame(
+            fitted = fitted(model_simple),
+            residuals = residuals(model_simple)
+          )
+          
+          p2 <- ggplot(residual_data, aes(x = fitted, y = residuals)) +
+            geom_point(alpha = 0.6, color = colors[1]) +
+            geom_hline(yintercept = 0, color = colors[2], size = 1) +
+            geom_smooth(method = "loess", color = colors[7], se = FALSE) +
+            labs(title = "Plot Diagnostik: Residual vs Fitted", x = "Nilai Prediksi", y = "Residual") +
+            theme_minimal()
+          
+          plots_created <- list("regresi_scatter" = p1, "residual_plot" = p2)
         }
         
-        plot_file <- file.path(temp_dir, "plot.jpg")
-        ggsave(plot_file, plot = p1, device = "jpeg", width = 10, height = 6, dpi = 300)
+        # Save all plots as JPG files
+        plot_files <- c()
+        for(plot_name in names(plots_created)) {
+          plot_file <- file.path(temp_dir, paste0(plot_name, ".jpg"))
+          ggsave(plot_file, plot = plots_created[[plot_name]], device = "jpeg", width = 10, height = 6, dpi = 300)
+          plot_files <- c(plot_files, plot_file)
+        }
         
+        # ===============================================
+        # 2. HANDLE FORMAT JPG - MULTIPLE IMAGES
+        # ===============================================
         if (format_type == "jpg") {
-          file.copy(plot_file, file)
+          if(length(plot_files) == 1) {
+            file.copy(plot_files[1], file)
+          } else {
+            # Create a ZIP with all plots for JPG format
+            tryCatch({
+              setwd(temp_dir)
+              zip_files <- basename(plot_files)
+              zip::zip(basename(file), zip_files)
+              file.copy(basename(file), file)
+            }, error = function(e) {
+              # Fallback: copy first plot
+              file.copy(plot_files[1], file)
+            })
+          }
           return()
         }
         
-        # Generate enhanced reports with proper content
-        report_content <- create_report_content(tab_name)
-        report_rmd <- file.path(temp_dir, "report.Rmd")
-        writeLines(report_content, report_rmd)
+        # ===============================================
+        # 3. GENERATE TEXT CONTENT FOR WORD/PDF
+        # ===============================================
         
-        # Generate reports without R Markdown dependencies
-        if (format_type == "pdf" || format_type == "all") {
-          tryCatch({
-            pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
-            pdf(pdf_file, width = 11, height = 8.5)
-            
-            # Create title page
-            plot.new()
-            text(0.5, 0.9, paste("🌟 DAVIRA SOVI Analytics Hub"), cex = 2, font = 2, col = "#1A237E")
-            text(0.5, 0.8, paste("Laporan Analisis", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
-            text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1)
-            text(0.5, 0.6, "STIS 2025 - Statistika Terapan", cex = 1.2, col = "#3949AB")
-            
-            # Add main plot
-            print(p1)
-            
-            # Add summary statistics page
-            plot.new()
-            text(0.5, 0.9, "Data Summary", cex = 1.5, font = 2)
-            summary_text <- paste(
-              "Dataset: Social Vulnerability Index",
-              paste("Total Observations:", nrow(sovi_data)),
-              paste("Variables:", ncol(sovi_data)),
-              paste("Analysis Focus:", tools::toTitleCase(tab_name)),
-              sep = "\n"
-            )
-            text(0.1, 0.7, summary_text, cex = 1, adj = 0)
-            
-            dev.off()
-            
-            if (format_type == "pdf") {
-              file.copy(pdf_file, file)
-              return()
+        # Create comprehensive text content based on tab
+        text_content <- ""
+        
+        if(tab_name == "beranda") {
+          text_content <- paste0(
+            "LAPORAN ANALISIS BERANDA SOVI\n",
+            "=====================================\n\n",
+            "Dataset Overview:\n",
+            "- Total Observasi: ", nrow(sovi_data), "\n",
+            "- Total Variabel: ", ncol(sovi_data), "\n",
+            "- Kelengkapan Data: ", round(sum(complete.cases(sovi_data))/nrow(sovi_data) * 100, 1), "%\n\n",
+            "Statistik Ringkasan Variabel Kunci:\n",
+            "- Rata-rata Kemiskinan: ", round(mean(sovi_data$POVERTY, na.rm = TRUE), 2), "%\n",
+            "- Rata-rata Pendidikan Rendah: ", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 2), "%\n",
+            "- Rata-rata Lansia: ", round(mean(sovi_data$ELDERLY, na.rm = TRUE), 2), "%\n",
+            "- Rata-rata Pertumbuhan: ", round(mean(sovi_data$GROWTH, na.rm = TRUE), 2), "%\n\n",
+            "Analisis Korelasi:\n",
+            "Korelasi antara POVERTY dan LOWEDU: ", round(cor(sovi_data$POVERTY, sovi_data$LOWEDU, use = "complete.obs"), 3), "\n",
+            "Korelasi antara POVERTY dan ELDERLY: ", round(cor(sovi_data$POVERTY, sovi_data$ELDERLY, use = "complete.obs"), 3), "\n\n",
+            "Interpretasi:\n",
+            "Dashboard beranda menunjukkan variasi yang signifikan dalam indikator kerentanan sosial antar wilayah. ",
+            "Distribusi kemiskinan menunjukkan pola yang heterogen dengan beberapa wilayah menunjukkan tingkat kerentanan tinggi. ",
+            "Matriks korelasi mengungkap hubungan kompleks antar variabel yang memberikan insight penting untuk analisis lanjutan."
+          )
+        } else if(tab_name == "manajemen") {
+          missing_summary <- sapply(sovi_data, function(x) sum(is.na(x)))
+          text_content <- paste0(
+            "LAPORAN MANAJEMEN DATA SOVI\n",
+            "===========================\n\n",
+            "Kualitas Data:\n",
+            "- Skor Kualitas: ", round(sum(complete.cases(sovi_data))/nrow(sovi_data) * 100, 0), "%\n",
+            "- Persentase Data Hilang: ", round(sum(is.na(sovi_data))/(nrow(sovi_data)*ncol(sovi_data)) * 100, 1), "%\n\n",
+            "Struktur Data:\n",
+            "- Variabel Numerik: ", sum(sapply(sovi_data, is.numeric)), "\n",
+            "- Variabel Kategorik: ", sum(sapply(sovi_data, function(x) is.factor(x) || is.character(x))), "\n\n",
+            "Analisis Missing Data:\n"
+          )
+          
+          if(any(missing_summary > 0)) {
+            missing_vars <- missing_summary[missing_summary > 0]
+            for(i in 1:length(missing_vars)) {
+              text_content <- paste0(text_content, "- ", names(missing_vars)[i], ": ", missing_vars[i], " observasi hilang\n")
             }
-          }, error = function(e) {
-            # Simple fallback
-            file.copy(plot_file, file)
-            return()
-          })
+          } else {
+            text_content <- paste0(text_content, "- Tidak ada data hilang pada semua variabel\n")
+          }
+          
+          text_content <- paste0(text_content, "\n",
+                                 "Interpretasi:\n",
+                                 "Dataset SOVI menunjukkan kualitas yang baik dengan tingkat kelengkapan tinggi. ",
+                                 "Struktur data mendukung berbagai jenis analisis statistik yang diperlukan untuk penelitian kerentanan sosial."
+          )
+        } else if(tab_name == "eksplorasi") {
+          text_content <- paste0(
+            "LAPORAN EKSPLORASI DATA SOVI\n",
+            "============================\n\n",
+            "Statistik Deskriptif Variabel Kunci:\n\n",
+            "POVERTY:\n",
+            "- Mean: ", round(mean(sovi_data$POVERTY, na.rm = TRUE), 3), "\n",
+            "- Median: ", round(median(sovi_data$POVERTY, na.rm = TRUE), 3), "\n",
+            "- SD: ", round(sd(sovi_data$POVERTY, na.rm = TRUE), 3), "\n",
+            "- Min: ", round(min(sovi_data$POVERTY, na.rm = TRUE), 3), "\n",
+            "- Max: ", round(max(sovi_data$POVERTY, na.rm = TRUE), 3), "\n\n",
+            "LOWEDU:\n",
+            "- Mean: ", round(mean(sovi_data$LOWEDU, na.rm = TRUE), 3), "\n",
+            "- Median: ", round(median(sovi_data$LOWEDU, na.rm = TRUE), 3), "\n",
+            "- SD: ", round(sd(sovi_data$LOWEDU, na.rm = TRUE), 3), "\n",
+            "- Min: ", round(min(sovi_data$LOWEDU, na.rm = TRUE), 3), "\n",
+            "- Max: ", round(max(sovi_data$LOWEDU, na.rm = TRUE), 3), "\n\n",
+            "Analisis Korelasi:\n",
+            "Korelasi POVERTY-LOWEDU: ", round(cor(sovi_data$POVERTY, sovi_data$LOWEDU, use = "complete.obs"), 3), "\n",
+            "Korelasi POVERTY-ELDERLY: ", round(cor(sovi_data$POVERTY, sovi_data$ELDERLY, use = "complete.obs"), 3), "\n",
+            "Korelasi POVERTY-GROWTH: ", round(cor(sovi_data$POVERTY, sovi_data$GROWTH, use = "complete.obs"), 3), "\n\n",
+            "Interpretasi:\n",
+            "Eksplorasi data mengungkap pola dan hubungan yang menarik antar variabel SOVI. ",
+            "Analisis ini memberikan dasar yang kuat untuk pemodelan statistik lanjutan dan pemahaman yang lebih mendalam tentang faktor-faktor yang mempengaruhi kerentanan sosial."
+          )
+        } else if(tab_name == "asumsi") {
+          shapiro_test <- tryCatch({
+            if(length(sovi_data$POVERTY[!is.na(sovi_data$POVERTY)]) <= 5000) {
+              shapiro.test(sovi_data$POVERTY)
+            } else {
+              list(statistic = NA, p.value = NA, method = "Sample too large for Shapiro-Wilk")
+            }
+          }, error = function(e) list(statistic = NA, p.value = NA, method = "Error in test"))
+          
+          text_content <- paste0(
+            "LAPORAN UJI ASUMSI STATISTIK\n",
+            "=============================\n\n",
+            "Uji Normalitas (Shapiro-Wilk):\n",
+            "- Variable: POVERTY\n",
+            "- Statistic: ", if(!is.na(shapiro_test$statistic)) round(shapiro_test$statistic, 4) else "N/A", "\n",
+            "- P-value: ", if(!is.na(shapiro_test$p.value)) round(shapiro_test$p.value, 4) else "N/A", "\n",
+            "- Hasil: ", if(!is.na(shapiro_test$p.value)) {
+              if(shapiro_test$p.value < 0.05) "Data tidak berdistribusi normal (p < 0.05)" else "Data berdistribusi normal (p >= 0.05)"
+            } else "Tidak dapat dihitung", "\n\n"
+          )
+          
+          # Homogeneity test
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            if(nrow(clean_data) > 0 && length(unique(clean_data$Economic_Status)) >= 2) {
+              levene_test <- tryCatch({
+                car::leveneTest(clean_data$POVERTY, clean_data$Economic_Status)
+              }, error = function(e) list(statistic = NA, p.value = NA))
+              
+              text_content <- paste0(text_content,
+                                     "Uji Homogenitas (Levene Test):\n",
+                                     "- Variable: POVERTY by Economic_Status\n",
+                                     "- F-statistic: ", if(!is.na(levene_test$`F value`[1])) round(levene_test$`F value`[1], 4) else "N/A", "\n",
+                                     "- P-value: ", if(!is.na(levene_test$`Pr(>F)`[1])) round(levene_test$`Pr(>F)`[1], 4) else "N/A", "\n",
+                                     "- Hasil: ", if(!is.na(levene_test$`Pr(>F)`[1])) {
+                                       if(levene_test$`Pr(>F)`[1] < 0.05) "Varians tidak homogen (p < 0.05)" else "Varians homogen (p >= 0.05)"
+                                     } else "Tidak dapat dihitung", "\n\n"
+              )
+            }
+          }
+          
+          text_content <- paste0(text_content,
+                                 "Interpretasi:\n",
+                                 "Pengujian asumsi statistik penting untuk menentukan metode analisis yang tepat. ",
+                                 "Uji normalitas dan homogenitas memberikan panduan untuk memilih uji parametrik atau non-parametrik. ",
+                                 "Hasil ini akan mempengaruhi validitas kesimpulan statistik yang diambil."
+          )
+        } else if(tab_name == "inferensia") {
+          # T-test one sample
+          t_test_result <- tryCatch({
+            t.test(sovi_data$POVERTY, mu = 15)
+          }, error = function(e) list(statistic = NA, p.value = NA, conf.int = c(NA, NA)))
+          
+          text_content <- paste0(
+            "LAPORAN STATISTIK INFERENSIA\n",
+            "=============================\n\n",
+            "Uji t Satu Sampel:\n",
+            "- Variable: POVERTY\n",
+            "- Hipotesis: μ = 15\n",
+            "- t-statistic: ", if(!is.na(t_test_result$statistic)) round(t_test_result$statistic, 4) else "N/A", "\n",
+            "- P-value: ", if(!is.na(t_test_result$p.value)) round(t_test_result$p.value, 4) else "N/A", "\n",
+            "- Confidence Interval: [", if(!is.na(t_test_result$conf.int[1])) round(t_test_result$conf.int[1], 3) else "N/A", 
+            ", ", if(!is.na(t_test_result$conf.int[2])) round(t_test_result$conf.int[2], 3) else "N/A", "]\n",
+            "- Kesimpulan: ", if(!is.na(t_test_result$p.value)) {
+              if(t_test_result$p.value < 0.05) "Tolak H0: rata-rata berbeda dari 15" else "Gagal tolak H0: rata-rata tidak berbeda dari 15"
+            } else "Tidak dapat dihitung", "\n\n"
+          )
+          
+          # ANOVA if possible
+          if("Economic_Status" %in% names(sovi_data)) {
+            clean_data <- sovi_data %>% filter(!is.na(Economic_Status), !is.na(POVERTY))
+            if(nrow(clean_data) > 0 && length(unique(clean_data$Economic_Status)) >= 2) {
+              anova_result <- tryCatch({
+                anova_model <- aov(POVERTY ~ Economic_Status, data = clean_data)
+                summary(anova_model)
+              }, error = function(e) NULL)
+              
+              if(!is.null(anova_result)) {
+                text_content <- paste0(text_content,
+                                       "Analisis Varians (ANOVA):\n",
+                                       "- Variable: POVERTY by Economic_Status\n",
+                                       "- F-statistic: ", round(anova_result[[1]]$`F value`[1], 4), "\n",
+                                       "- P-value: ", round(anova_result[[1]]$`Pr(>F)`[1], 4), "\n",
+                                       "- Kesimpulan: ", if(anova_result[[1]]$`Pr(>F)`[1] < 0.05) {
+                                         "Terdapat perbedaan signifikan antar kelompok"
+                                       } else {
+                                         "Tidak ada perbedaan signifikan antar kelompok"
+                                       }, "\n\n"
+                )
+              }
+            }
+          }
+          
+          text_content <- paste0(text_content,
+                                 "Interpretasi:\n",
+                                 "Analisis inferensia memberikan dasar untuk membuat kesimpulan tentang populasi berdasarkan sampel. ",
+                                 "Uji hipotesis membantu menentukan apakah perbedaan yang diamati secara statistik signifikan. ",
+                                 "Hasil ini penting untuk pengambilan keputusan berbasis bukti dalam konteks penelitian kerentanan sosial."
+          )
+        } else if(tab_name == "regresi") {
+          # Simple regression
+          model_result <- tryCatch({
+            lm(POVERTY ~ LOWEDU + ELDERLY + GROWTH, data = sovi_data)
+          }, error = function(e) NULL)
+          
+          if(!is.null(model_result)) {
+            model_summary <- summary(model_result)
+            
+            text_content <- paste0(
+              "LAPORAN ANALISIS REGRESI LINEAR BERGANDA\n",
+              "=========================================\n\n",
+              "Model: POVERTY ~ LOWEDU + ELDERLY + GROWTH\n\n",
+              "Ringkasan Model:\n",
+              "- R-squared: ", round(model_summary$r.squared, 4), "\n",
+              "- Adjusted R-squared: ", round(model_summary$adj.r.squared, 4), "\n",
+              "- F-statistic: ", round(model_summary$fstatistic[1], 4), "\n",
+              "- P-value (F-test): ", format.pval(pf(model_summary$fstatistic[1], model_summary$fstatistic[2], model_summary$fstatistic[3], lower.tail = FALSE)), "\n",
+              "- Residual standard error: ", round(model_summary$sigma, 4), "\n\n",
+              "Koefisien:\n"
+            )
+            
+            coef_table <- model_summary$coefficients
+            for(i in 1:nrow(coef_table)) {
+              text_content <- paste0(text_content,
+                                     "- ", rownames(coef_table)[i], ": ",
+                                     "Estimate = ", round(coef_table[i, 1], 4),
+                                     ", SE = ", round(coef_table[i, 2], 4),
+                                     ", t = ", round(coef_table[i, 3], 4),
+                                     ", p = ", round(coef_table[i, 4], 4),
+                                     if(coef_table[i, 4] < 0.05) " (signifikan)" else " (tidak signifikan)",
+                                     "\n"
+              )
+            }
+            
+            text_content <- paste0(text_content, "\n",
+                                   "Interpretasi:\n",
+                                   "Model regresi linear berganda menjelaskan ", round(model_summary$r.squared * 100, 2), "% variasi dalam POVERTY. ",
+                                   if(pf(model_summary$fstatistic[1], model_summary$fstatistic[2], model_summary$fstatistic[3], lower.tail = FALSE) < 0.05) {
+                                     "Model secara keseluruhan signifikan secara statistik. "
+                                   } else {
+                                     "Model secara keseluruhan tidak signifikan secara statistik. "
+                                   },
+                                   "Analisis ini memberikan insight tentang faktor-faktor yang mempengaruhi tingkat kemiskinan dalam konteks kerentanan sosial."
+            )
+          } else {
+            text_content <- "LAPORAN ANALISIS REGRESI LINEAR BERGANDA\n=========================================\n\nError: Tidak dapat melakukan analisis regresi dengan data yang tersedia."
+          }
         }
         
+        # ===============================================
+        # 4. HANDLE FORMAT WORD
+        # ===============================================
         if (format_type == "word") {
-          # Create simple HTML that can be opened as Word - WORD ONLY
+          # Create HTML that can be opened as Word
           html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
           
           html_content <- paste0(
             "<!DOCTYPE html><html><head>",
+            '<meta charset="UTF-8">',
             "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
-            "<style>body{font-family:Arial;margin:40px;} h1{color:#1A237E;} h2{color:#3949AB;}</style>",
+            "<style>",
+            "body { font-family: 'Times New Roman', serif; margin: 40px; line-height: 1.6; color: #333; }",
+            "h1 { color: #1A237E; font-size: 24px; text-align: center; margin-bottom: 20px; }",
+            "h2 { color: #3949AB; font-size: 18px; margin-top: 25px; margin-bottom: 15px; }",
+            "h3 { color: #546E7A; font-size: 16px; margin-top: 20px; margin-bottom: 10px; }",
+            ".header { background-color: #E8EAF6; padding: 20px; border-radius: 5px; margin-bottom: 30px; }",
+            ".content { white-space: pre-line; font-size: 12px; }",
+            ".footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 10px; color: #666; }",
+            "</style>",
             "</head><body>",
-            "<h1>🌟 DAVIRA -SOVI Analytics Hub</h1>",
+            '<div class="header">',
+            "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
             "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
             "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
             "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
-            "<p><strong>Total Observations:</strong> ", nrow(sovi_data), "</p>",
-            "<p><strong>Variables:</strong> ", ncol(sovi_data), "</p>",
-            "<h3>Summary Statistics</h3>",
-            "<p>Platform: DAVIRA -SOVI Analytics Hub</p>",
-            "<p>Institution: STIS 2025</p>",
-            "<p>Course: Statistika Terapan</p>",
+            "<p><strong>Institution:</strong> STIS 2025 - Statistika Terapan</p>",
+            "</div>",
+            '<div class="content">',
+            gsub("\n", "<br>", text_content),
+            "</div>",
+            '<div class="footer">',
+            "<p>Laporan ini dibuat menggunakan DAVIRA - SOVI Analytics Hub</p>",
+            "<p>Data Source: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv</p>",
+            "<p>Reference: https://www.sciencedirect.com/science/article/pii/S2352340921010180</p>",
+            "</div>",
             "</body></html>"
           )
           
@@ -3900,53 +4281,107 @@ server <- function(input, output, session) {
           return()
         }
         
+        # ===============================================
+        # 5. HANDLE FORMAT PDF
+        # ===============================================
+        if (format_type == "pdf" || format_type == "all") {
+          tryCatch({
+            pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
+            pdf(pdf_file, width = 11, height = 8.5)
+            
+            # Title page
+            plot.new()
+            text(0.5, 0.9, "🌟 DAVIRA - SOVI Analytics Hub", cex = 2, font = 2, col = "#1A237E")
+            text(0.5, 0.8, paste("Laporan Analisis", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
+            text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1)
+            text(0.5, 0.6, "STIS 2025 - Statistika Terapan", cex = 1.2, col = "#3949AB")
+            text(0.5, 0.5, paste("Dataset: Social Vulnerability Index"), cex = 1)
+            text(0.5, 0.4, paste("Total Observations:", nrow(sovi_data)), cex = 1)
+            
+            # Add all plots
+            for(plot_name in names(plots_created)) {
+              print(plots_created[[plot_name]])
+            }
+            
+            # Add text content page
+            plot.new()
+            text(0.5, 0.95, "Hasil Analisis dan Interpretasi", cex = 1.5, font = 2)
+            
+            # Split text content into lines for better formatting
+            lines <- strsplit(text_content, "\n")[[1]]
+            lines <- lines[nchar(lines) > 0] # Remove empty lines
+            y_pos <- 0.9
+            
+            for(line in lines[1:min(length(lines), 40)]) { # Limit lines to fit page
+              if(y_pos > 0.05) {
+                text(0.05, y_pos, line, cex = 0.8, adj = 0)
+                y_pos <- y_pos - 0.02
+              }
+            }
+            
+            dev.off()
+            
+            if (format_type == "pdf") {
+              file.copy(pdf_file, file)
+              return()
+            }
+          }, error = function(e) {
+            # Fallback for PDF
+            if (format_type == "pdf") {
+              file.copy(plot_files[1], file)
+              return()
+            }
+          })
+        }
+        
+        # ===============================================
+        # 6. HANDLE FORMAT ALL (ZIP)
+        # ===============================================
         if (format_type == "all") {
-          # Create HTML for ALL format only
+          # Create HTML version for ALL format
           html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
           
           html_content <- paste0(
             "<!DOCTYPE html><html><head>",
+            '<meta charset="UTF-8">',
             "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
-            "<style>body{font-family:Arial;margin:40px;} h1{color:#1A237E;} h2{color:#3949AB;}</style>",
+            "<style>",
+            "body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }",
+            "h1 { color: #1A237E; } h2 { color: #3949AB; }",
+            ".content { white-space: pre-line; }",
+            "</style>",
             "</head><body>",
-            "<h1>🌟 DAVIRA -SOVI Analytics Hub</h1>",
+            "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
             "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
             "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
-            "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
-            "<p><strong>Total Observations:</strong> ", nrow(sovi_data), "</p>",
-            "<p><strong>Variables:</strong> ", ncol(sovi_data), "</p>",
-            "<h3>Summary Statistics</h3>",
-            "<p>Platform: DAVIRA -SOVI Analytics Hub</p>",
-            "<p>Institution: STIS 2025</p>",
-            "<p>Course: Statistika Terapan</p>",
+            '<div class="content">',
+            gsub("\n", "<br>", text_content),
+            "</div>",
             "</body></html>"
           )
           
           writeLines(html_content, html_file)
-        }
-        
-        # Create ZIP for "all" format
-        if (format_type == "all") {
-          # Create a simple zip manually
+          
+          # Collect all files for ZIP
+          all_files <- plot_files
+          if(file.exists(file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))) {
+            all_files <- c(all_files, file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))
+          }
+          all_files <- c(all_files, html_file)
+          
+          # Create ZIP
           tryCatch({
-            files_list <- c(plot_file)
-            if(file.exists(file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))) {
-              files_list <- c(files_list, file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))
-            }
-            if(file.exists(file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html")))) {
-              files_list <- c(files_list, file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html")))
-            }
-            
-            # Simple zip creation
-            old_wd <- setwd(temp_dir)
-            zip_cmd <- paste("zip", shQuote(basename(file)), paste(shQuote(basename(files_list)), collapse = " "))
-            system(zip_cmd)
-            setwd(old_wd)
-            
-            file.copy(file.path(temp_dir, basename(file)), file)
+            zip::zip(file, basename(all_files), root = temp_dir)
           }, error = function(e) {
-            # Fallback: just copy the plot
-            file.copy(plot_file, file)
+            # Manual zip fallback
+            tryCatch({
+              setwd(temp_dir)
+              system(paste("zip", shQuote(basename(file)), paste(shQuote(basename(all_files)), collapse = " ")))
+              file.copy(basename(file), file)
+            }, error = function(e2) {
+              # Ultimate fallback: copy first plot
+              file.copy(plot_files[1], file)
+            })
           })
         }
       }
