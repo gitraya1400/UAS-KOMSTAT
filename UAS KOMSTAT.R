@@ -3791,12 +3791,20 @@ server <- function(input, output, session) {
                               "inferensia" = "StatistikInferensia",
                               "regresi" = "RegresiLinear")
         
-        paste0("SOVI_", current_tab, "_", format(Sys.time(), "%Y%m%d_%H%M"), 
-               switch(format_type,
-                      "jpg" = ".jpg",
-                      "pdf" = ".pdf", 
-                      "word" = ".docx",
-                      "all" = ".zip"))
+                 # Format-specific filename logic
+         timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
+         
+         if(format_type == "jpg") {
+           paste0("SOVI_", current_tab, "_Gambar_", timestamp, ".jpg")
+         } else if(format_type == "word") {
+           paste0("SOVI_", current_tab, "_Laporan_", timestamp, ".html")
+         } else if(format_type == "pdf") {
+           paste0("SOVI_", current_tab, "_Dokumen_", timestamp, ".pdf")
+         } else if(format_type == "all") {
+           paste0("SOVI_", current_tab, "_Lengkap_", timestamp, ".zip")
+         } else {
+           paste0("SOVI_", current_tab, "_", timestamp, ".", format_type)
+         }
       },
       content = function(file) {
         temp_dir <- tempdir()
@@ -3986,26 +3994,21 @@ server <- function(input, output, session) {
           plot_files <- c(plot_files, plot_file)
         }
         
-        # ===============================================
-        # 2. HANDLE FORMAT JPG - MULTIPLE IMAGES
-        # ===============================================
-        if (format_type == "jpg") {
-          if(length(plot_files) == 1) {
-            file.copy(plot_files[1], file)
-          } else {
-            # Create a ZIP with all plots for JPG format
-            tryCatch({
-              setwd(temp_dir)
-              zip_files <- basename(plot_files)
-              zip::zip(basename(file), zip_files)
-              file.copy(basename(file), file)
-            }, error = function(e) {
-              # Fallback: copy first plot
-              file.copy(plot_files[1], file)
-            })
-          }
-          return()
-        }
+                 # ===============================================
+         # 2. HANDLE FORMAT JPG - SINGLE OR MULTIPLE IMAGES
+         # ===============================================
+         if (format_type == "jpg") {
+           if(length(plot_files) == 1) {
+             # Single image: direct copy
+             file.copy(plot_files[1], file)
+           } else {
+             # Multiple images: create composite or pick main one
+             # For now, let's create a combined plot or pick the first main plot
+             main_plot_file <- plot_files[1]  # Use the first plot as representative
+             file.copy(main_plot_file, file)
+           }
+           return()
+         }
         
         # ===============================================
         # 3. GENERATE TEXT CONTENT FOR WORD/PDF
@@ -4237,54 +4240,52 @@ server <- function(input, output, session) {
           }
         }
         
-        # ===============================================
-        # 4. HANDLE FORMAT WORD
-        # ===============================================
-        if (format_type == "word") {
-          # Create HTML that can be opened as Word
-          html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
-          
-          html_content <- paste0(
-            "<!DOCTYPE html><html><head>",
-            '<meta charset="UTF-8">',
-            "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
-            "<style>",
-            "body { font-family: 'Times New Roman', serif; margin: 40px; line-height: 1.6; color: #333; }",
-            "h1 { color: #1A237E; font-size: 24px; text-align: center; margin-bottom: 20px; }",
-            "h2 { color: #3949AB; font-size: 18px; margin-top: 25px; margin-bottom: 15px; }",
-            "h3 { color: #546E7A; font-size: 16px; margin-top: 20px; margin-bottom: 10px; }",
-            ".header { background-color: #E8EAF6; padding: 20px; border-radius: 5px; margin-bottom: 30px; }",
-            ".content { white-space: pre-line; font-size: 12px; }",
-            ".footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 10px; color: #666; }",
-            "</style>",
-            "</head><body>",
-            '<div class="header">',
-            "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
-            "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
-            "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
-            "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
-            "<p><strong>Institution:</strong> STIS 2025 - Statistika Terapan</p>",
-            "</div>",
-            '<div class="content">',
-            gsub("\n", "<br>", text_content),
-            "</div>",
-            '<div class="footer">',
-            "<p>Laporan ini dibuat menggunakan DAVIRA - SOVI Analytics Hub</p>",
-            "<p>Data Source: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv</p>",
-            "<p>Reference: https://www.sciencedirect.com/science/article/pii/S2352340921010180</p>",
-            "</div>",
-            "</body></html>"
-          )
-          
-          writeLines(html_content, html_file)
-          file.copy(html_file, file)
-          return()
-        }
+                 # ===============================================
+         # 4. HANDLE FORMAT WORD - DIRECT HTML FILE
+         # ===============================================
+         if (format_type == "word") {
+           # Create HTML that can be opened as Word - DIRECT COPY TO OUTPUT FILE
+           html_content <- paste0(
+             "<!DOCTYPE html><html><head>",
+             '<meta charset="UTF-8">',
+             "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
+             "<style>",
+             "body { font-family: 'Times New Roman', serif; margin: 40px; line-height: 1.6; color: #333; }",
+             "h1 { color: #1A237E; font-size: 24px; text-align: center; margin-bottom: 20px; }",
+             "h2 { color: #3949AB; font-size: 18px; margin-top: 25px; margin-bottom: 15px; }",
+             "h3 { color: #546E7A; font-size: 16px; margin-top: 20px; margin-bottom: 10px; }",
+             ".header { background-color: #E8EAF6; padding: 20px; border-radius: 5px; margin-bottom: 30px; }",
+             ".content { white-space: pre-line; font-size: 12px; }",
+             ".footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 10px; color: #666; }",
+             "</style>",
+             "</head><body>",
+             '<div class="header">',
+             "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
+             "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
+             "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
+             "<p><strong>Dataset:</strong> Social Vulnerability Index</p>",
+             "<p><strong>Institution:</strong> STIS 2025 - Statistika Terapan</p>",
+             "</div>",
+             '<div class="content">',
+             gsub("\n", "<br>", text_content),
+             "</div>",
+             '<div class="footer">',
+             "<p>Laporan ini dibuat menggunakan DAVIRA - SOVI Analytics Hub</p>",
+             "<p>Data Source: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv</p>",
+             "<p>Reference: https://www.sciencedirect.com/science/article/pii/S2352340921010180</p>",
+             "</div>",
+             "</body></html>"
+           )
+           
+           # Write directly to the output file
+           writeLines(html_content, file, useBytes = TRUE)
+           return()
+         }
         
-        # ===============================================
-        # 5. HANDLE FORMAT PDF
-        # ===============================================
-        if (format_type == "pdf" || format_type == "all") {
+                 # ===============================================
+         # 5. HANDLE FORMAT PDF - DIRECT PDF FILE
+         # ===============================================
+         if (format_type == "pdf") {
           tryCatch({
             pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
             pdf(pdf_file, width = 11, height = 8.5)
@@ -4318,86 +4319,134 @@ server <- function(input, output, session) {
                 y_pos <- y_pos - 0.02
               }
             }
-            
-            dev.off()
-            
-            if (format_type == "pdf") {
-              file.copy(pdf_file, file)
-              return()
-            }
-          }, error = function(e) {
-            # Fallback for PDF
-            if (format_type == "pdf") {
-              file.copy(plot_files[1], file)
-              return()
-            }
-          })
-        }
+             
+             dev.off()
+             
+             # Copy PDF to output file
+             file.copy(pdf_file, file)
+             return()
+           }, error = function(e) {
+             # Fallback for PDF - copy first plot
+             file.copy(plot_files[1], file)
+             return()
+           })
+         }
         
-        # ===============================================
-        # 6. HANDLE FORMAT ALL (ZIP)
-        # ===============================================
-        if (format_type == "all") {
-          # Create HTML version for ALL format
-          html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
-          
-          html_content <- paste0(
-            "<!DOCTYPE html><html><head>",
-            '<meta charset="UTF-8">',
-            "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
-            "<style>",
-            "body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }",
-            "h1 { color: #1A237E; } h2 { color: #3949AB; }",
-            ".content { white-space: pre-line; }",
-            "</style>",
-            "</head><body>",
-            "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
-            "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
-            "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
-            '<div class="content">',
-            gsub("\n", "<br>", text_content),
-            "</div>",
-            "</body></html>"
-          )
-          
-          writeLines(html_content, html_file)
-          
-          # Collect all files for ZIP
-          all_files <- plot_files
-          if(file.exists(file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))) {
-            all_files <- c(all_files, file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf")))
-          }
-          all_files <- c(all_files, html_file)
-          
-          # Create ZIP
-          tryCatch({
-            zip::zip(file, basename(all_files), root = temp_dir)
-          }, error = function(e) {
-            # Manual zip fallback
-            tryCatch({
-              setwd(temp_dir)
-              system(paste("zip", shQuote(basename(file)), paste(shQuote(basename(all_files)), collapse = " ")))
-              file.copy(basename(file), file)
-            }, error = function(e2) {
-              # Ultimate fallback: copy first plot
-              file.copy(plot_files[1], file)
-            })
-          })
-        }
+                 # ===============================================
+         # 6. HANDLE FORMAT ALL (ZIP) - COMPLETE PACKAGE
+         # ===============================================
+         if (format_type == "all") {
+           # Create PDF version for ZIP
+           tryCatch({
+             pdf_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
+             pdf(pdf_file, width = 11, height = 8.5)
+             
+             # Title page
+             plot.new()
+             text(0.5, 0.9, "🌟 DAVIRA - SOVI Analytics Hub", cex = 2, font = 2, col = "#1A237E")
+             text(0.5, 0.8, paste("Laporan Analisis", tools::toTitleCase(tab_name)), cex = 1.5, font = 2)
+             text(0.5, 0.7, paste("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M")), cex = 1)
+             
+             # Add all plots
+             for(plot_name in names(plots_created)) {
+               print(plots_created[[plot_name]])
+             }
+             
+             dev.off()
+           }, error = function(e) {
+             # PDF creation failed, continue without it
+           })
+           
+           # Create HTML version for ALL format
+           html_file <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".html"))
+           
+           html_content <- paste0(
+             "<!DOCTYPE html><html><head>",
+             '<meta charset="UTF-8">',
+             "<title>SOVI Report - ", tools::toTitleCase(tab_name), "</title>",
+             "<style>",
+             "body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }",
+             "h1 { color: #1A237E; } h2 { color: #3949AB; }",
+             ".content { white-space: pre-line; }",
+             "</style>",
+             "</head><body>",
+             "<h1>🌟 DAVIRA - SOVI Analytics Hub</h1>",
+             "<h2>Laporan Analisis ", tools::toTitleCase(tab_name), "</h2>",
+             "<p><strong>Generated:</strong> ", format(Sys.time(), "%Y-%m-%d %H:%M"), "</p>",
+             '<div class="content">',
+             gsub("\n", "<br>", text_content),
+             "</div>",
+             "</body></html>"
+           )
+           
+           writeLines(html_content, html_file)
+           
+           # Collect all files for ZIP
+           all_files <- plot_files
+           pdf_file_path <- file.path(temp_dir, paste0("SOVI_", tools::toTitleCase(tab_name), ".pdf"))
+           if(file.exists(pdf_file_path)) {
+             all_files <- c(all_files, pdf_file_path)
+           }
+           all_files <- c(all_files, html_file)
+           
+           # Create ZIP
+           tryCatch({
+             zip::zip(file, basename(all_files), root = temp_dir)
+           }, error = function(e) {
+             # Manual zip fallback
+             tryCatch({
+               setwd(temp_dir)
+               system(paste("zip", shQuote(basename(file)), paste(shQuote(basename(all_files)), collapse = " ")))
+               file.copy(basename(file), file)
+             }, error = function(e2) {
+               # Ultimate fallback: copy first plot
+               file.copy(plot_files[1], file)
+             })
+           })
+         }
       }
     )
   }
   
-  # Terapkan handler ke setiap tombol secara dinamis
-  tabs <- c("beranda", "manajemen", "eksplorasi", "asumsi", "inferensia", "regresi")
-  formats <- c("jpg", "pdf", "word", "all")
+  # ===============================================
+  # INDIVIDUAL DOWNLOAD HANDLERS - FIXED VERSION
+  # ===============================================
   
-  for (tab in tabs) {
-    for (fmt in formats) {
-      handler_name <- paste0("download_", tab, "_", fmt)
-      output[[handler_name]] <- generate_download_handler(tab, fmt)
-    }
-  }
+  # BERANDA handlers
+  output$download_beranda_jpg <- generate_download_handler("beranda", "jpg")
+  output$download_beranda_pdf <- generate_download_handler("beranda", "pdf") 
+  output$download_beranda_word <- generate_download_handler("beranda", "word")
+  output$download_beranda_all <- generate_download_handler("beranda", "all")
+  
+  # MANAJEMEN handlers
+  output$download_manajemen_jpg <- generate_download_handler("manajemen", "jpg")
+  output$download_manajemen_pdf <- generate_download_handler("manajemen", "pdf")
+  output$download_manajemen_word <- generate_download_handler("manajemen", "word")
+  output$download_manajemen_all <- generate_download_handler("manajemen", "all")
+  
+  # EKSPLORASI handlers  
+  output$download_eksplorasi_jpg <- generate_download_handler("eksplorasi", "jpg")
+  output$download_eksplorasi_pdf <- generate_download_handler("eksplorasi", "pdf")
+  output$download_eksplorasi_word <- generate_download_handler("eksplorasi", "word")
+  output$download_eksplorasi_all <- generate_download_handler("eksplorasi", "all")
+  
+  # ASUMSI handlers
+  output$download_asumsi_jpg <- generate_download_handler("asumsi", "jpg")
+  output$download_asumsi_pdf <- generate_download_handler("asumsi", "pdf")
+  output$download_asumsi_word <- generate_download_handler("asumsi", "word")
+  output$download_asumsi_all <- generate_download_handler("asumsi", "all")
+  
+  # INFERENSIA handlers
+  output$download_inferensia_jpg <- generate_download_handler("inferensia", "jpg")
+  output$download_inferensia_pdf <- generate_download_handler("inferensia", "pdf")
+  output$download_inferensia_word <- generate_download_handler("inferensia", "word")
+  output$download_inferensia_all <- generate_download_handler("inferensia", "all")
+  
+  # REGRESI handlers
+  output$download_regresi_jpg <- generate_download_handler("regresi", "jpg")
+  output$download_regresi_pdf <- generate_download_handler("regresi", "pdf")
+  output$download_regresi_word <- generate_download_handler("regresi", "word")
+  output$download_regresi_all <- generate_download_handler("regresi", "all")
 }
 
 # Run the app
