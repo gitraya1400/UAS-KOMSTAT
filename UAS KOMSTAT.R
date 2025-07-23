@@ -1538,6 +1538,11 @@ ui <- dashboardPage(
                    )
                  )
           )
+        ),
+        
+        # Download Panel untuk Regresi (Conditional)
+        fluidRow(
+          column(12, create_download_panel("regresi", c("input.run_regression > 0")))
         )
       )
     )
@@ -4594,44 +4599,24 @@ server <- function(input, output, session) {
           }
         }
         
-                          # ===============================================
-         # 4. HANDLE FORMAT WORD - PROPER DOCX FILE
-         # ===============================================
-         if (format_type == "word") {
-           # Create RTF content which can be opened as Word
-           rtf_content <- paste0(
-             "{\\rtf1\\ansi\\deff0",
-             "{\\fonttbl{\\f0 Times New Roman;}}",
-             "{\\colortbl;\\red26\\green35\\blue126;\\red57\\green73\\blue171;}",
-             "\\f0\\fs24",
-             "\\qc{\\b\\fs32\\cf1 DAVIRA - SOVI Analytics Hub}\\par",
-             "\\qc{\\b\\fs28\\cf2 Laporan Analisis ", tools::toTitleCase(tab_name), "}\\par\\par",
-             "\\ql{\\b Generated:} ", format(Sys.time(), "%Y-%m-%d %H:%M"), "\\par",
-             "{\\b Dataset:} Social Vulnerability Index\\par",
-             "{\\b Institution:} STIS 2025 - KOMPUTASI STATISTIK\\par\\par",
-             gsub("\n", "\\par ", text_content),
-             "\\par\\par",
-             "{\\fs18 Laporan ini dibuat menggunakan DAVIRA - SOVI Analytics Hub}\\par",
-             "{\\fs18 Data Source: https://raw.githubusercontent.com/bmlmcmc/naspaclust/main/data/sovi_data.csv}\\par",
-             "}"
-           )
-           
-           # Write RTF content to file
-           writeLines(rtf_content, file, useBytes = TRUE)
-           return()
-         }
+        # ===============================================
+        # HANDLE ALL FORMATS - CLEANED UP STRUCTURE
+        # ===============================================
         
-         # ===============================================
-         # 4. HANDLE JPG FORMAT - SAVE ALL PLOTS AS INDIVIDUAL JPGS AND ZIP THEM
-         # ===============================================
-         if (format_type == "jpg") {
+        # JPG Format - Images only
+        if (format_type == "jpg") {
            jpg_files <- c()
            
            # Save each plot as JPG
            for(plot_name in names(plots_created)) {
              jpg_file <- file.path(temp_dir, paste0(plot_name, ".jpg"))
-             ggsave(jpg_file, plots_created[[plot_name]], width = 10, height = 8, dpi = 300)
-             jpg_files <- c(jpg_files, jpg_file)
+             tryCatch({
+               ggsave(jpg_file, plots_created[[plot_name]], width = 10, height = 8, dpi = 300, device = "jpeg")
+               jpg_files <- c(jpg_files, jpg_file)
+             }, error = function(e) {
+               # Skip if plot fails to save
+               cat("Error saving plot:", plot_name, "\n")
+             })
            }
            
            # Create a ZIP of all JPG files
@@ -4640,13 +4625,15 @@ server <- function(input, output, session) {
              zip::zip(zip_file, files = basename(jpg_files), root = temp_dir)
              file.copy(zip_file, file)
            } else {
-             # If no plots, create empty file
-             writeLines("No plots available for this tab.", file)
+             # If no plots, create a text file indicating no plots
+             no_plots_file <- file.path(temp_dir, "no_plots.txt")
+             writeLines("No plots available for this tab.", no_plots_file)
+             zip_file <- file.path(temp_dir, "no_images.zip") 
+             zip::zip(zip_file, files = "no_plots.txt", root = temp_dir)
+             file.copy(zip_file, file)
            }
            
-         # ===============================================
-         # 5. HANDLE WORD FORMAT - CREATE PROPER DOCX FILE
-         # ===============================================
+         # Word Format - Text report  
          } else if (format_type == "word") {
            # Create proper RTF content that can be opened by Word
            rtf_header <- "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}{\\f1 Arial;}}\\f0\\fs24"
